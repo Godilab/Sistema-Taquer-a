@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Taquería{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #FDFCFB; margin: 0; }
+
+        /* Scrollbar Estilizado */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #FDFCFB; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+
+        #sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #main-container { transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .sidebar-hidden { transform: translateX(-100%) !important; }
+        .margin-0 { margin-left: 0 !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    {% set modulos = [
+        {'name': 'Home', 'label': 'Inicio', 'icon': 'home', 'color': 'text-orange-500', 'url': '/admin'}, {'name': 'Dashboard', 'label': 'Dashboard', 'icon': 'pie-chart', 'color': 'text-indigo-500', 'url': '/dashboard'},
+        {'name': 'POS', 'label': 'Punto de Venta', 'icon': 'shopping-cart', 'color': 'text-emerald-600', 'url': '/ventas/'},
+        {'name': 'Kitchen', 'label': 'Cocina', 'icon': 'monitor', 'color': 'text-red-500', 'url': '/cocina/'},
+        {'name': 'Inventory', 'label': 'Inventario', 'icon': 'package', 'color': 'text-amber-600', 'url': '/inventario/'},
+        {'name': 'Recipes', 'label': 'Recetas', 'icon': 'clipboard', 'color': 'text-teal-600', 'url': '/recetas/'},
+        {'name': 'Mermas', 'label': 'Mermas', 'icon': 'alert-triangle', 'color': 'text-orange-500', 'url': '/mermas/'},
+        {'name': 'Proveedores', 'label': 'Proveedores', 'icon': 'truck', 'color': 'text-amber-500', 'url': '/proveedores/'},
+        {'name': 'Compras', 'label': 'Compras', 'icon': 'shopping-bag', 'color': 'text-orange-600', 'url': '/compras/'},
+        {'name': 'Finanzas', 'label': 'Corte / Finanzas', 'icon': 'dollar-sign', 'color': 'text-emerald-500', 'url': '/finanzas/'},
+        {'name': 'Menu', 'label': 'Menú / Carta', 'icon': 'book-open', 'color': 'text-pink-600', 'url': '/menu/'},
+        {'name': 'Employees', 'label': 'Usuarios', 'icon': 'user-check', 'color': 'text-cyan-600', 'url': '/usuarios/'}
+    ] %}
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-orange-100 flex flex-col shadow-sm lg:translate-x-0 -translate-x-full">
+        <div class="p-6 border-b border-orange-50 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-md text-white text-xl">🌮</div>
+            <div>
+                <h1 class="text-gray-900 font-black text-lg leading-none italic uppercase">Taquería</h1>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1 no-scrollbar">
+            {% for mod in modulos %}
+            <a href="{{ mod.url }}" class="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all group {% if active_page == mod.name %}bg-orange-500 shadow-lg shadow-orange-100 text-white{% else %}hover:bg-orange-50 text-slate-600{% endif %}">
+                <i data-feather="{{ mod.icon }}" class="w-5 h-5 flex-shrink-0 {% if active_page == mod.name %}text-white{% else %}{{ mod.color }}{% endif %}"></i>
+                <span class="font-bold text-sm">{{ mod.label }}</span>
+            </a>
+            {% endfor %}
+        </nav>
+
+        <div class="p-4 border-t border-orange-50 bg-orange-50/30 space-y-3">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-white font-black text-sm uppercase">
+                    {{ session.get('user_name', 'U')[0] }}
+                </div>
+                <div class="min-w-0">
+                    <p class="text-slate-900 text-xs font-black truncate uppercase italic">{{ session.get('user_name', 'Invitado') }}</p>
+                    <p class="text-slate-400 text-[10px] truncate font-bold uppercase tracking-tighter">{{ session.get('user_rol', 'Sin Rol') }}</p>
+                </div>
+            </div>
+
+            {% if session.get('user_rol') == 'Administrador' %}
+            <a href="{{ url_for('usuarios.respaldar_bd') }}" 
+               class="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 border border-slate-700 rounded-xl text-white hover:bg-slate-700 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <i data-feather="database" class="w-3 h-3 text-orange-400"></i> Respaldar BD
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('usuarios.logout') }}" class="flex items-center justify-center gap-2 w-full py-2 bg-white border border-orange-100 rounded-xl text-slate-400 hover:text-red-500 hover:border-red-100 transition-all text-[10px] font-black uppercase tracking-widest">
+                <i data-feather="log-out" class="w-3 h-3"></i> Salir
+            </a>
+        </div>
+    </aside>
+
+    <div id="main-container" class="flex flex-col min-h-screen lg:ml-64 transition-all duration-300">
+        <header class="h-16 border-b border-orange-50 bg-white/90 backdrop-blur-md flex items-center px-6 sticky top-0 z-30">
+            <button onclick="toggleMenu()" class="p-2 rounded-xl hover:bg-orange-50 text-slate-500">
+                <i data-feather="menu"></i>
+            </button>
+            <div class="ml-4 h-4 w-px bg-slate-200"></div>
+            <span class="ml-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic">Panel de Gestión</span>
+        </header>
+
+        <main class="flex-1">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="px-6 pt-4">
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest {% if category == 'success' %}bg-green-100 text-green-700 border border-green-200{% else %}bg-red-100 text-red-700 border border-red-200{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        feather.replace();
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const container = document.getElementById('main-container');
+            sidebar.classList.toggle('lg:translate-x-0');
+            sidebar.classList.toggle('sidebar-hidden');
+            container.classList.toggle('lg:ml-64');
+            container.classList.toggle('margin-0');
+        }
+    </script>
+</body>
+</html>

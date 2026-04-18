@@ -1,0 +1,48 @@
+{% extends 'layout.html' %}
+
+{% block title %}Inicio - Taquería{% endblock %}
+
+{% block content %}
+<div class="space-y-6 pb-12">
+    <div class="px-6 mt-10">
+        <h1 class="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
+            ¡{{ saludo }}, {{ session.get('user_name', 'Usuario').split(' ')[0] }}!
+        </h1>
+        <p class="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mt-2 italic">{{ fecha_actual }}</p>
+    </div>
+
+    <div class="flex items-center justify-between px-6 mt-12">
+        <h2 class="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">Operaciones de Negocio</h2>
+        <div class="h-px bg-slate-100 flex-1 ml-8"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-6">
+        {% set modulos_home = [
+            {'url': '/dashboard', 'label': 'Dashboard', 'desc': 'Análisis y estadísticas', 'icon': 'pie-chart', 'bg': 'bg-indigo-500'},
+            {'url': '/ventas/', 'label': 'POS', 'desc': 'Terminal de venta rápida', 'icon': 'shopping-cart', 'bg': 'bg-emerald-500'},
+            {'url': '/cocina/', 'label': 'Cocina', 'desc': 'KDS: Gestión de comandas', 'icon': 'monitor', 'bg': 'bg-red-500'},
+            {'url': '/finanzas/', 'label': 'Finanzas', 'desc': 'Corte de caja y utilidades', 'icon': 'dollar-sign', 'bg': 'bg-emerald-600'},
+            {'url': '/inventario/', 'label': 'Inventario', 'desc': 'Insumos y existencias', 'icon': 'package', 'bg': 'bg-amber-500'},
+            {'url': '/proveedores/', 'label': 'Proveedores', 'desc': 'Contactos y catálogo', 'icon': 'truck', 'bg': 'bg-orange-500'},
+            {'url': '/compras/', 'label': 'Compras', 'desc': 'Ingreso de mercancía', 'icon': 'shopping-bag', 'bg': 'bg-blue-600'},
+            {'url': '/recetas/', 'label': 'Recetas', 'desc': 'Escandallos y porciones', 'icon': 'clipboard', 'bg': 'bg-teal-600'},
+            {'url': '/mermas/', 'label': 'Mermas', 'desc': 'Registro de desperdicios', 'icon': 'alert-triangle', 'bg': 'bg-rose-500'},
+            {'url': '/usuarios/', 'label': 'Usuarios', 'desc': 'Roles y permisos', 'icon': 'user-check', 'bg': 'bg-cyan-600'}
+        ] %}
+
+        {% for mod in modulos_home %}
+        <a href="{{ mod.url }}" class="group bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 {{ mod.bg }} text-white group-hover:rotate-6 transition-transform shadow-lg shadow-slate-100">
+                <i data-feather="{{ mod.icon }}" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-slate-900 font-black text-xl italic uppercase leading-none">{{ mod.label }}</h3>
+            <p class="text-slate-400 text-xs font-medium mt-2 leading-relaxed">{{ mod.desc }}</p>
+            <div class="mt-8 flex items-center text-slate-300 group-hover:text-orange-500 transition-colors">
+                <span class="text-[10px] font-black uppercase tracking-widest">Abrir Módulo</span>
+                <i data-feather="arrow-right" class="w-4 h-4 ml-auto"></i>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

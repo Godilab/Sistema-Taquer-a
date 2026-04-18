@@ -1,0 +1,352 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="p-8 space-y-10 bg-[#FDFCFB] min-h-screen">
+    <div class="flex items-center gap-4">
+        <div
+            class="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+            <i data-feather="dollar-sign"></i>
+        </div>
+        <div>
+            <h1
+                class="text-4xl font-black text-slate-900 italic uppercase leading-none">Finanzas</h1>
+            <p
+                class="text-emerald-500 font-black text-[10px] uppercase tracking-[0.4em] mt-2 ml-1">Corte
+                Diario y Flujo de Caja</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div
+            class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-transform hover:scale-[1.02]">
+            <p
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingresos
+                (Ventas)</p>
+            <h2 class="text-4xl font-black text-emerald-500 mt-2">$ {{
+                "%.2f"|format(ventas) }}</h2>
+        </div>
+        <div
+            class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-transform hover:scale-[1.02]">
+            <p
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Egresos
+                (Compras)</p>
+            <h2 class="text-4xl font-black text-red-500 mt-2">$ {{
+                "%.2f"|format(compras) }}</h2>
+        </div>
+        <div
+            class="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl transition-transform hover:scale-[1.02]">
+            <p
+                class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Balance
+                en Caja (Esperado)</p>
+            <h2 class="text-4xl font-black text-white mt-2">$ {{
+                "%.2f"|format(esperado) }}</h2>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div
+            class="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
+            <h2
+                class="text-xl font-black text-slate-900 italic uppercase mb-6">Realizar
+                Corte de Caja</h2>
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Efectivo
+                            Contado</label>
+                        <input type="number" id="monto_real" step="0.01"
+                            class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-2xl text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                            placeholder="0.00">
+                    </div>
+                    <div class="space-y-2">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Diferencia
+                            / Desfase</label>
+                        <div id="diff_label"
+                            class="w-full p-5 bg-slate-100 rounded-2xl font-black text-2xl text-slate-400 text-center">
+                            $ 0.00
+                        </div>
+                    </div>
+                </div>
+                <button id="btnCerrar" onclick="iniciarCorte()"
+                    class="w-full py-6 bg-emerald-500 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-100 active:scale-95 transition-all hover:bg-emerald-600">
+                    Cerrar Caja Hoy
+                </button>
+            </div>
+        </div>
+
+        <div
+            class="bg-emerald-50 rounded-[3rem] p-10 flex flex-col justify-center border border-emerald-100">
+            <h3 class="text-emerald-900 font-black italic uppercase italic">Nota
+                de Auditoría</h3>
+            <p
+                class="text-emerald-700 text-sm mt-4 leading-relaxed font-medium">
+                El balance se calcula sumando el fondo inicial fijo más ventas y
+                restando egresos. Al cerrar, todas las operaciones se vinculan
+                al ID de corte.
+            </p>
+            <div class="mt-6 flex gap-2">
+                <span
+                    class="px-3 py-1 bg-white text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-tighter border border-emerald-200">Fondo:
+                    ${{ fondo }}</span>
+                <span
+                    class="px-3 py-1 bg-white text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-tighter border border-emerald-200">ID
+                    Empleado: Diego Admin</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm">
+        <div class="flex justify-between items-center mb-8">
+            <h2
+                class="text-2xl font-black text-slate-900 italic uppercase">Historial
+                de Cortes</h2>
+            <p
+                class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Clic
+                en una fila para ver detalles</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead
+                    class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4 text-center">Ventas (+)</th>
+                        <th class="px-6 py-4 text-center">Compras (-)</th>
+                        <th class="px-6 py-4 text-center">Esperado</th>
+                        <th class="px-6 py-4 text-center">Real</th>
+                        <th class="px-6 py-4 text-center">Diferencia</th>
+                    </tr>
+                </thead>
+                <tbody
+                    class="divide-y divide-slate-50 font-bold text-sm text-slate-600">
+                    {% if historial_cortes %}
+                    {% for c in historial_cortes %}
+                    <tr
+                        class="hover:bg-slate-50 transition-colors cursor-pointer group"
+                        onclick="verDetalleCorte({{ c.idCorte }})">
+                        <td class="px-6 py-4 flex items-center gap-3">
+                            <span
+                                class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] group-hover:bg-emerald-500 group-hover:text-white transition-colors">#{{
+                                c.idCorte }}</span>
+                            {{ c.fecha.strftime('%d %b %Y') }}
+                        </td>
+                        <td class="px-6 py-4 text-center text-emerald-600">$ {{
+                            "%.2f"|format(c.ingresos_ventas) }}</td>
+                        <td class="px-6 py-4 text-center text-red-500">$ {{
+                            "%.2f"|format(c.egresos_compras) }}</td>
+                        <td
+                            class="px-6 py-4 text-center italic text-slate-400">$
+                            {{ "%.2f"|format(c.monto_final_esperado) }}</td>
+                        <td
+                            class="px-6 py-4 text-center font-black text-slate-900">$
+                            {{ "%.2f"|format(c.monto_real) }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span
+                                class="px-3 py-1 rounded-lg {% if c.diferencia < 0 %}bg-red-50 text-red-500{% else %}bg-emerald-50 text-emerald-500{% endif %}">
+                                $ {{ "%.2f"|format(c.diferencia) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6"
+                            class="px-6 py-10 text-center text-slate-400 italic">Sin
+                            registros.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalDetalleCorte"
+    class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-md p-4">
+    <div
+        class="bg-white rounded-[3.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div
+            class="p-8 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+            <div>
+                <h2
+                    class="text-2xl font-black text-slate-900 italic uppercase leading-none">Auditoría
+                    de Ventas</h2>
+                <p id="txtIdCorte"
+                    class="text-emerald-500 font-black text-[10px] uppercase tracking-widest mt-2">Detalles
+                    del Corte</p>
+            </div>
+            <button onclick="cerrarModalDetalle()"
+                class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+        <div class="p-8 max-h-[50vh] overflow-y-auto no-scrollbar">
+            <table class="w-full">
+                <thead
+                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                    <tr>
+                        <th class="py-4 text-left px-4">Ticket</th>
+                        <th class="py-4 text-left">Detalle de Consumo</th> <th
+                            class="py-4 text-center">Hora</th>
+                        <th class="py-4 text-right px-4">Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaVentasCorte"
+                    class="divide-y divide-slate-50 font-bold text-slate-600">
+                </tbody>
+            </table>
+        </div>
+        <div class="p-8 bg-slate-900 text-center">
+            <p
+                class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Taquería
+                "Los Inges" - Sistema de Gestión</p>
+        </div>
+    </div>
+</div>
+
+<div id="modalConfirmarCorte" class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-md p-4">
+    <div class="bg-white rounded-[3rem] w-full max-w-sm shadow-2xl p-8 animate-in zoom-in duration-200">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 uppercase italic">Confirmar Cierre</h2>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">Al cerrar la caja, los saldos se reiniciarán para el siguiente turno. ¿Proceder con el corte?</p>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="cancelarCierre()" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs hover:bg-slate-200 transition-colors">Cancelar</button>
+            <button onclick="ejecutarCorteDefinitivo()" class="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-emerald-200 hover:bg-emerald-600 transition-colors">Sí, Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+    
+    const montoEsperado = parseFloat("{{ esperado | default(0) }}") || 0;
+    const fondoInic = parseFloat("{{ fondo | default(0) }}") || 0;
+    const ventasDia = parseFloat("{{ ventas | default(0) }}") || 0;
+    const comprasDia = parseFloat("{{ compras | default(0) }}") || 0;
+
+    const inputReal = document.getElementById('monto_real');
+    const labelDiff = document.getElementById('diff_label');
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    inputReal.addEventListener('input', (e) => {
+        // Remover estilos de error si los hubiera
+        inputReal.classList.remove('ring-4', 'ring-red-500');
+        
+        const valorReal = parseFloat(e.target.value) || 0;
+        const diferencia = valorReal - montoEsperado;
+        labelDiff.innerText = `$ ${diferencia.toFixed(2)}`;
+        labelDiff.className = `w-full p-5 rounded-2xl font-black text-2xl text-center border ${diferencia < 0 ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-500 border-emerald-100'}`;
+    });
+
+    // Nueva función que abre el modal de confirmación
+    function iniciarCorte() {
+        const real = parseFloat(inputReal.value);
+        if (isNaN(real)) {
+            inputReal.classList.add('ring-4', 'ring-red-500');
+            mostrarNotificacion("Ingresa el monto real contado en caja", "warning");
+            return;
+        }
+        document.getElementById('modalConfirmarCorte').classList.remove('hidden');
+    }
+
+    function cancelarCierre() {
+        document.getElementById('modalConfirmarCorte').classList.add('hidden');
+    }
+
+    // Ejecuta el fetch real hacia el servidor
+    async function ejecutarCorteDefinitivo() {
+        const real = parseFloat(inputReal.value);
+        const payload = { 
+            fondo: fondoInic, 
+            ventas: ventasDia, 
+            compras: comprasDia, 
+            esperado: montoEsperado, 
+            real: real, 
+            diferencia: real - montoEsperado 
+        };
+
+        const btn = document.querySelector('#modalConfirmarCorte button.bg-emerald-500');
+        const textOriginal = btn.innerText;
+        btn.innerText = "PROCESANDO...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/finanzas/cerrar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) { 
+                mostrarNotificacion("Caja cerrada con éxito", "success");
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                mostrarNotificacion("Error en el servidor al cerrar caja", "error");
+                btn.innerText = textOriginal;
+                btn.disabled = false;
+            }
+        } catch (e) { 
+            mostrarNotificacion("Error de conexión al procesar el corte", "error");
+            btn.innerText = textOriginal;
+            btn.disabled = false;
+        }
+    }
+
+    async function verDetalleCorte(id) {
+        document.getElementById('txtIdCorte').innerText = `Analizando Corte ID: #${id}`;
+        const tbody = document.getElementById('tablaVentasCorte');
+        tbody.innerHTML = '<tr><td colspan="4" class="py-10 text-center text-slate-400 italic">Consultando servidor...</td></tr>';
+        document.getElementById('modalDetalleCorte').classList.remove('hidden');
+
+        try {
+            const res = await fetch(`/finanzas/detalles_corte/${id}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                tbody.innerHTML = '';
+                data.ventas.forEach(v => {
+                    const badges = v.articulos.map(art => 
+                        `<span class="inline-block px-2 py-0.5 bg-slate-100 text-[9px] rounded-md mr-1 mb-1 text-slate-500">
+                            ${art}
+                        </span>`
+                    ).join('');
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 border-b border-slate-50 last:border-0">
+                            <td class="py-5 px-4 text-slate-900 font-black italic">#${v.id}</td>
+                            <td class="py-5 max-w-xs">
+                                <div class="flex flex-wrap">${badges || '<span class="text-[9px] text-slate-300 italic uppercase">Sin detalles</span>'}</div>
+                            </td>
+                            <td class="py-5 text-center text-slate-400 text-[10px]">${v.fecha}</td>
+                            <td class="py-5 px-4 text-right text-emerald-600 font-black italic">$ ${v.total.toFixed(2)}</td>
+                        </tr>`;
+                });
+            }
+        } catch (e) { 
+            tbody.innerHTML = '<tr><td colspan="4" class="py-10 text-center text-red-400">Error al obtener datos.</td></tr>'; 
+        }
+    }
+
+    function cerrarModalDetalle() { document.getElementById('modalDetalleCorte').classList.add('hidden'); }
+</script>
+{% endblock %}

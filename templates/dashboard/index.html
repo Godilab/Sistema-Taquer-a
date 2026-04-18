@@ -1,0 +1,176 @@
+{% extends 'layout.html' %}
+
+{% block title %}Dashboard - Taquería{% endblock %}
+
+{% block content %}
+<style>
+    /* Estilos de la gráfica y barras de progreso */
+    .bar-container { display: flex; align-items: flex-end; gap: 8px; height: 250px; padding-bottom: 40px; margin-top: 20px; }
+    .bar-item { flex: 1; background: #F97316; border-radius: 8px 8px 4px 4px; position: relative; transition: all 0.3s ease; min-width: 30px; }
+    .bar-item:hover { background: #EA580C; transform: scaleX(1.05); }
+    .bar-tooltip { 
+        position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+        background: #0f172a; color: white; padding: 5px 10px; border-radius: 8px;
+        font-size: 10px; font-weight: 900; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); white-space: nowrap;
+    }
+    .bar-item:hover .bar-tooltip { opacity: 1; }
+    .bar-label { 
+        position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%) rotate(-45deg);
+        font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; white-space: nowrap;
+    }
+    .progress-bg { flex: 1; height: 14px; background: #f1f5f9; border-radius: 99px; overflow: hidden; margin-top: 4px; }
+    .progress-fill { height: 100%; border-radius: 99px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+</style>
+
+<div class="min-h-screen bg-slate-50 p-8 space-y-8">
+    
+    <div class="flex justify-between items-center no-print">
+        <div>
+            <h1 class="text-4xl font-black text-slate-900 italic uppercase tracking-tight">Reportes y Estadísticas</h1>
+            <p class="text-slate-500 mt-1 font-bold text-sm uppercase tracking-widest">Panel de Control Financiero</p>
+        </div>
+        <button onclick="window.location.reload()" class="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl shadow-sm font-black text-xs uppercase transition-all">
+            <i data-feather="refresh-cw" class="w-4 h-4"></i> Actualizar Datos
+        </button>
+    </div>
+
+    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 no-print">
+        <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex flex-wrap items-end gap-6">
+            <div class="flex gap-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2">Periodo de Análisis</label>
+                    <select name="filtro" class="bg-slate-50 border border-slate-200 rounded-xl px-8 py-3 font-bold text-sm outline-none cursor-pointer">
+                        <option value="dia" {% if filtro == 'dia' %}selected{% endif %}>Hoy</option>
+                        <option value="semana" {% if filtro == 'semana' %}selected{% endif %}>Esta Semana</option>
+                        <option value="mes" {% if filtro == 'mes' %}selected{% endif %}>Este Mes</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase hover:bg-slate-800 transition-all shadow-lg">
+                Aplicar Filtros
+            </button>
+            <a href="{{ url_for('dashboard.exportar_excel', desde=fecha_inicio, hasta=fecha_fin) }}" 
+               class="px-8 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase hover:bg-emerald-700 transition-all flex items-center gap-3 ml-auto shadow-lg">
+                <i data-feather="file-text" class="w-4 h-4"></i> Exportar a Excel
+            </a>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6">
+            <div class="w-16 h-16 rounded-3xl bg-slate-50 text-slate-600 flex justify-center items-center">
+                <i data-feather="dollar-sign" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingresos Totales</p>
+                <p class="text-3xl font-black text-slate-900">${{ "{:,.2f}".format(ventas_totales) }}</p>
+                <p class="text-xs font-bold text-slate-500 mt-1">{{ ordenes_totales }} pedidos</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6">
+            <div class="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex justify-center items-center">
+                <i data-feather="pie-chart" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Utilidad Bruta</p>
+                <p class="text-3xl font-black text-slate-900">${{ "{:,.2f}".format(utilidad_bruta | default(0)) }}</p>
+                <p class="text-xs font-bold text-slate-500 mt-1">Margen de recetas</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6">
+            <div class="w-16 h-16 rounded-3xl bg-red-50 text-red-500 flex justify-center items-center">
+                <i data-feather="shopping-bag" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gastos Indirectos</p>
+                <p class="text-3xl font-black text-red-500">${{ "{:,.2f}".format(gastos_operativos | default(0)) }}</p>
+                <p class="text-xs font-bold text-slate-500 mt-1">Compras e insumos</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6">
+            <div class="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-500 flex justify-center items-center">
+                <i data-feather="trending-up" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Utilidad Neta</p>
+                <p class="text-3xl font-black text-emerald-500">${{ "{:,.2f}".format(utilidad_neta | default(0)) }}</p>
+                <p class="text-xs font-bold text-slate-500 mt-1">Ganancia Real</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-100">
+        <h2 class="text-lg font-black text-slate-900 italic uppercase mb-12 flex items-center gap-3">
+            <i data-feather="bar-chart-2" class="text-orange-500"></i> Flujo de Ventas
+        </h2>
+        <div class="bar-container">
+            {% if ventas_grafica %}
+                {% set lista_totales = ventas_grafica | map(attribute='total') | list %}
+                {% set max_venta = lista_totales | max if lista_totales else 1 %}
+                {% for item in ventas_grafica %}
+                    {% set porcentaje = (item.total / max_venta * 100) if max_venta > 0 else 5 %}
+                    <div class="bar-item" style="height: {{ porcentaje }}%;">
+                        <span class="bar-tooltip">${{ "{:,.0f}".format(item.total) }}</span>
+                        <span class="bar-label">{{ item.etiqueta }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="w-full text-center text-slate-300 font-black uppercase py-20 italic">No hay datos</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-100">
+            <h2 class="text-lg font-black text-slate-900 italic uppercase mb-8">Ranking de Productos</h2>
+            <div class="space-y-8">
+                {% if top_productos %}
+                    {% set max_vendido = top_productos[0]['total_vendido'] if top_productos[0] else 1 %}
+                    {% for prod in top_productos %}
+                        {% set ancho_progreso = (prod['total_vendido'] / max_vendido * 100) if max_vendido > 0 else 0 %}
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-black text-slate-700 uppercase italic">{{ prod['nombre'] }}</span>
+                                <span class="text-xs font-black text-slate-900">{{ prod['total_vendido'] }} uds.</span>
+                            </div>
+                            <div class="progress-bg"><div class="progress-fill" style="width: {{ ancho_progreso }}%; background: #F97316;"></div></div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-slate-300 py-20 font-black uppercase italic">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-red-50">
+            <h2 class="text-lg font-black text-red-600 italic uppercase mb-8 flex items-center gap-3">
+                <i data-feather="alert-octagon"></i> Insumos Críticos
+            </h2>
+            <div class="space-y-4 max-h-[350px] overflow-y-auto no-scrollbar">
+                {% for alerta in alertas_stock %}
+                <div class="p-6 bg-red-50/50 rounded-3xl flex justify-between items-center border border-red-100">
+                    <div>
+                        <p class="font-black text-slate-900 uppercase text-sm italic">{{ alerta['nombre'] }}</p>
+                        <p class="text-[10px] font-bold text-red-500 mt-1 uppercase">Mínimo: {{ alerta['stockMinimo'] }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-black text-red-600 leading-none">{{ "{:,.2f}".format(alerta['stock']) }}</p>
+                        <span class="text-[9px] font-black text-red-400 uppercase">{{ alerta['unidadCompra'] }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-emerald-500 font-black uppercase text-xs text-center py-20 italic">Inventario Saludable</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>feather.replace();</script>
+{% endblock %}

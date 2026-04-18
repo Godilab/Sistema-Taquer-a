@@ -1,0 +1,184 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-orange-50/30 p-8 space-y-6">
+    <div class="flex justify-between items-center border-b border-orange-100 pb-6">
+        <h1 class="text-4xl font-black text-slate-900 italic uppercase">Gestión de Usuarios</h1>
+        <button onclick="document.getElementById('modalAgregar').classList.remove('hidden')" class="bg-slate-900 text-white font-black px-8 py-4 rounded-2xl uppercase text-xs shadow-xl tracking-widest hover:scale-95 transition-all">
+            + Nuevo Registro
+        </button>
+    </div>
+
+    <div class="bg-white rounded-[3rem] overflow-hidden shadow-sm border border-slate-100">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest">
+                    <th class="px-10 py-5">Colaborador</th>
+                    <th class="px-10 py-5 text-center">Rol</th>
+                    <th class="px-10 py-5 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for user in usuarios %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-10 py-6 font-bold text-slate-900 italic uppercase">
+                        {{ user.nombre }} <br>
+                        <span class="text-[10px] text-slate-400 normal-case font-medium">{{ user.email }}</span>
+                    </td>
+                    <td class="px-10 py-6 text-center">
+                        <span class="px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase border border-slate-200">
+                            {{ user.rol }}
+                        </span>
+                    </td>
+                    <td class="px-10 py-6 text-right">
+                        <div class="flex justify-end gap-3">
+                            <button onclick="prepararEdicion('{{ user.idUsuario }}', '{{ user.nombre }}', '{{ user.email }}', '{{ user.rol }}')" 
+                                    class="w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-300 hover:text-orange-500 hover:border-orange-200 flex items-center justify-center transition-all shadow-sm">
+                                <i data-feather="settings" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="confirmarBaja('{{ user.idUsuario }}', '{{ user.nombre }}')" 
+                                    class="w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-300 hover:text-red-600 hover:border-red-200 flex items-center justify-center transition-all shadow-sm">
+                                <i data-feather="user-x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm mt-8">
+        <div class="flex items-center gap-4 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
+                <i data-feather="refresh-cw"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 uppercase italic">Restauración Crítica</h2>
+        </div>
+        <p class="text-[10px] text-red-500 font-bold uppercase mb-6 tracking-widest ml-14">⚠️ Advertencia: Esto reemplazará toda la información actual de la base de datos.</p>
+        
+        <form action="{{ url_for('usuarios.restaurar_bd') }}" method="POST" enctype="multipart/form-data" class="flex gap-4 ml-14">
+            <input type="file" name="archivo_sql" accept=".sql" required
+                   class="flex-1 text-xs font-bold text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer">
+            <button type="submit" onclick="return confirm('¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará los datos actuales y es irreversible.')" 
+                    class="bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-red-100 active:scale-95 transition-all">
+                Ejecutar Restauración
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="modalAgregar" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
+        <h2 class="text-2xl font-black uppercase italic mb-6">Nuevo Usuario</h2>
+        <form action="{{ url_for('usuarios.agregar') }}" method="POST" class="space-y-4">
+            <input type="text" name="nombre" placeholder="Nombre completo" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold focus:ring-2 focus:ring-slate-900">
+            <input type="email" name="email" placeholder="Correo" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold focus:ring-2 focus:ring-slate-900">
+            <input type="password" name="password" placeholder="Contraseña" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold focus:ring-2 focus:ring-slate-900">
+            <select name="rol" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold">
+                <option value="Administrador">Administrador</option>
+                <option value="Cajero">Cajero</option>
+                <option value="Cocina">Cocina</option>
+            </select>
+            <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Guardar Usuario</button>
+            <button type="button" onclick="document.getElementById('modalAgregar').classList.add('hidden')" class="w-full text-slate-400 font-bold uppercase text-[10px] mt-4">Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<div id="modalEditar" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl border-t-8 border-orange-500">
+        <h2 class="text-2xl font-black uppercase italic mb-6">Editar Usuario</h2>
+        <form action="{{ url_for('usuarios.editar') }}" method="POST" class="space-y-4">
+            <input type="hidden" name="idUsuario" id="input_edit_id">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Nombre</label>
+                <input type="text" name="nombre" id="input_edit_nombre" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Email</label>
+                <input type="email" name="email" id="input_edit_email" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Rol del Sistema</label>
+                <select name="rol" id="input_edit_rol" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 font-bold">
+                    <option value="Administrador">Administrador</option>
+                    <option value="Cajero">Cajero</option>
+                    <option value="Cocina">Cocina</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all mt-4">Actualizar Datos</button>
+            <button type="button" onclick="document.getElementById('modalEditar').classList.add('hidden')" class="w-full text-slate-400 font-bold uppercase text-[10px] mt-4 text-center block">Cerrar Ventana</button>
+        </form>
+    </div>
+</div>
+
+<div id="modalBaja" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[60] flex items-center justify-center p-6">
+    <div class="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center">
+        <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i data-feather="user-minus" class="w-10 h-10"></i>
+        </div>
+        <h2 class="text-xl font-black uppercase italic text-slate-900">Dar de Baja</h2>
+        <p id="txtBaja" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3 leading-relaxed">¿Seguro que deseas eliminar a este colaborador?</p>
+        <div class="flex gap-4 mt-8">
+            <button onclick="document.getElementById('modalBaja').classList.add('hidden')" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs">No, Volver</button>
+            <a id="btnLinkBaja" href="#" class="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-red-200 flex items-center justify-center">Sí, Eliminar</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+
+    function prepararEdicion(id, nombre, email, rol) {
+        document.getElementById('input_edit_id').value = id;
+        document.getElementById('input_edit_nombre').value = nombre;
+        document.getElementById('input_edit_email').value = email;
+        document.getElementById('input_edit_rol').value = rol.trim();
+        document.getElementById('modalEditar').classList.remove('hidden');
+    }
+
+    function confirmarBaja(id, nombre) {
+        document.getElementById('txtBaja').innerText = `¿Seguro que deseas eliminar a ${nombre.toUpperCase()} del sistema?`;
+        document.getElementById('btnLinkBaja').href = `/usuarios/eliminar/${id}`;
+        document.getElementById('modalBaja').classList.remove('hidden');
+    }
+
+    // --- SISTEMA DE NOTIFICACIONES ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // --- INTEGRACIÓN CON FLASH DE FLASK ---
+    document.addEventListener('DOMContentLoaded', () => {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    // Mapeo de categorías de Flask a los tipos de tu función
+                    let tipo = 'success';
+                    {% if category == 'danger' or category == 'error' %}
+                        tipo = 'error';
+                    {% elif category == 'warning' %}
+                        tipo = 'warning';
+                    {% endif %}
+                    
+                    mostrarNotificacion("{{ message }}", tipo);
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
+</script>
+{% endblock %}

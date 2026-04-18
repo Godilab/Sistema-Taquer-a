@@ -1,0 +1,37 @@
+{% extends 'layout.html' %}
+
+{% block title %}404 - No encontrado{% endblock %}
+
+{% block content %}
+<div class="min-h-[80vh] flex items-center justify-center p-8">
+    <div class="text-center space-y-8 max-w-md">
+        <div class="relative inline-block">
+            <div class="w-32 h-32 bg-orange-100 rounded-[3rem] flex items-center justify-center text-6xl shadow-inner animate-bounce">
+                🌮
+            </div>
+            <div class="absolute -top-2 -right-2 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-black shadow-lg border-4 border-white">
+                ?
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <h1 class="text-7xl font-black text-slate-900 italic leading-none">404</h1>
+            <p class="text-orange-500 font-black uppercase tracking-[0.3em] text-xs">¡Ups! Se nos cayó el taco</p>
+        </div>
+
+        <p class="text-slate-400 font-medium text-sm leading-relaxed px-4">
+            La página que buscas no existe o fue movida a otra sucursal. 
+            Verifica la URL o vuelve al panel principal.
+        </p>
+
+        <div class="pt-6">
+            <a href="/" class="inline-flex items-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black shadow-2xl shadow-slate-200 hover:scale-95 transition-all uppercase text-xs tracking-widest">
+                <i data-feather="arrow-left"></i>
+                Volver al Inicio
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>feather.replace();</script>
+{% endblock %}

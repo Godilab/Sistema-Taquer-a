@@ -1,0 +1,155 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="p-8 space-y-10 bg-[#FDFCFB] min-h-screen">
+    <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-100">
+            <i data-feather="alert-circle"></i>
+        </div>
+        <div>
+            <h1 class="text-4xl font-black text-slate-900 italic uppercase leading-none">Mermas</h1>
+            <p class="text-red-500 font-black text-[10px] uppercase tracking-[0.4em] mt-2 ml-1">Control de desperdicios y pérdidas</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm space-y-6">
+                <h2 class="text-xl font-black text-slate-900 italic uppercase leading-none">Nueva Merma</h2>
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Insumo</label>
+                        <select id="idInsumo" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-900">
+                            {% for i in insumos %}
+                            <option value="{{ i.idInsumo }}">{{ i.nombre }} ({{ i.stock_actual }} {{ i.unidad }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Cantidad</label>
+                            <input type="number" id="cantidad" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-center text-slate-900 h-14">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Tipo</label>
+                            <select id="tipoMerma" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-900">
+                                <option value="Cocción">Cocción</option>
+                                <option value="Caducidad">Caducidad</option>
+                                <option value="Error humano">Error humano</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Descripción del Motivo</label>
+                        <textarea id="motivo" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold h-24 resize-none text-slate-900"></textarea>
+                    </div>
+                    <button onclick="registrarMerma()" class="w-full py-5 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-red-100 active:scale-95 transition-all">
+                        Registrar Pérdida
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] border-b border-slate-50">
+                            <th class="px-8 py-6">Insumo</th>
+                            <th class="px-8 py-6 text-center">Cantidad</th>
+                            <th class="px-8 py-6">Tipo</th>
+                            <th class="px-8 py-6">Motivo</th>
+                            <th class="px-8 py-6">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for h in historial %}
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="px-8 py-6 font-black text-slate-700 italic uppercase text-sm">{{ h.insumo.nombre }}</td>
+                            <td class="px-8 py-6 text-center font-black text-red-500 text-lg">-{{ h.cantidad }}</td>
+                            <td class="px-8 py-6">
+                                <span class="px-3 py-1 bg-red-50 text-red-500 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                    {{ h.tipoMerma }}
+                                </span>
+                            </td>
+                            <td class="px-8 py-6 text-slate-500 text-xs font-bold max-w-xs truncate" title="{{ h.motivo }}">
+                                {{ h.motivo if h.motivo else 'Sin descripción' }}
+                            </td>
+                            <td class="px-8 py-6 text-slate-400 text-xs font-bold uppercase">
+                                {{ h.fechaRegistro.strftime('%d %b %H:%M') }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar iconos
+    feather.replace();
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    async function registrarMerma() {
+        const idInsumo = document.getElementById('idInsumo').value;
+        const cantidad = document.getElementById('cantidad').value;
+        const tipoMerma = document.getElementById('tipoMerma').value;
+        const motivo = document.getElementById('motivo').value;
+
+        if (!idInsumo || !cantidad || cantidad <= 0) {
+            mostrarNotificacion("Selecciona un insumo y una cantidad válida", "warning");
+            return;
+        }
+
+        const payload = {
+            idInsumo: parseInt(idInsumo),
+            cantidad: parseFloat(cantidad),
+            tipo: tipoMerma,
+            motivo: motivo
+        };
+
+        try {
+            const response = await fetch('/mermas/registrar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                mostrarNotificacion("Merma registrada y stock actualizado", "success");
+                // Retraso intencional para permitir la lectura del Toast antes de recargar
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                mostrarNotificacion(result.mensaje, "error");
+            }
+        } catch (error) {
+            mostrarNotificacion("Error al conectar con el servidor", "error");
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-orange-50/40 p-6 space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center shadow-sm">
+                <i data-feather="truck" class="text-orange-500"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black text-gray-900 uppercase italic">Proveedores</h1>
+                <p class="text-gray-400 text-sm font-bold tracking-tight">Directorio de proveedores registrados</p>
+            </div>
+        </div>
+        <button onclick="abrirNuevo()" class="bg-orange-500 hover:bg-orange-600 text-white font-black py-3 px-6 rounded-2xl shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center gap-2">
+            <i data-feather="plus" class="w-4 h-4"></i> Nuevo Proveedor
+        </button>
+    </div>
+
+    <div class="flex flex-wrap gap-3 items-center">
+        <div class="relative flex-1 min-w-[250px]">
+            <i data-feather="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></i>
+            <input type="text" id="busquedaProv" placeholder="Buscar proveedor..." class="w-full pl-11 pr-4 py-3 bg-white border border-orange-100 rounded-2xl focus:ring-2 focus:ring-orange-500 font-bold">
+        </div>
+        <button onclick="toggleInactivos()" id="btnToggleInactivos" class="text-xs font-black px-6 py-3 rounded-2xl border bg-white text-gray-500 border-gray-200 hover:bg-orange-50 uppercase tracking-widest transition-all">
+            Ver inactivos
+        </button>
+    </div>
+
+    <div class="bg-white rounded-[2rem] border border-orange-100 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-orange-50/60 text-gray-500 font-black uppercase text-[10px] tracking-[0.2em]">
+                    <tr>
+                        <th class="px-8 py-5 tracking-tighter">Nombre de la Empresa</th>
+                        <th class="px-6 py-5">Teléfono</th>
+                        <th class="px-6 py-5">Dirección</th>
+                        <th class="px-6 py-5 text-center">Estado</th>
+                        <th class="px-8 py-5 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyProveedores" class="divide-y divide-gray-50">
+                    {% for s in proveedores %}
+                    <tr class="hover:bg-orange-50/30 transition-colors prov-row {% if not s.active %}opacity-40 hidden-inactive{% endif %}" 
+                        data-active="{{ s.active | lower }}" data-nombre="{{ s.name | lower }}">
+                        <td class="px-8 py-5 font-black text-gray-800 text-lg">{{ s.name }}</td>
+                        <td class="px-6 py-5 font-bold text-gray-600">{{ s.phone or '—' }}</td>
+                        <td class="px-6 py-5 text-gray-400 font-medium italic">{{ s.address or '—' }}</td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase {% if s.active %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+                                {{ 'Activo' if s.active else 'Inactivo' }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-right space-x-2">
+                            <button 
+                                class="btn-editar text-gray-400 hover:text-orange-500 transition-colors"
+                                data-id="{{ s.id }}" data-nombre="{{ s.name }}" data-phone="{{ s.phone }}" data-address="{{ s.address }}"
+                            >
+                                <i data-feather="edit-3" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="toggleStatus('{{ s.id }}')" class="text-gray-300 hover:text-red-500 transition-colors">
+                                <i data-feather="power" class="w-5 h-5"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalProv" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl space-y-6 animate-in zoom-in duration-200">
+        <h2 id="modalTitle" class="text-3xl font-black text-gray-900 uppercase italic text-center">Nuevo Registro</h2>
+        <div class="space-y-4">
+            <div class="space-y-1 px-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Comercial *</label>
+                <input id="f_name" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="space-y-1 px-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Teléfono</label>
+                <input id="f_phone" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black">
+            </div>
+            <div class="space-y-1 px-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Dirección Física</label>
+                <textarea id="f_address" rows="3" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black resize-none"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-4 pt-4">
+            <button onclick="cerrarModal()" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs">Cerrar</button>
+            <button onclick="procesarGuardado()" class="flex-1 py-5 bg-orange-500 text-white rounded-2xl font-black shadow-lg uppercase text-xs">Guardar Proveedor</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hidden-inactive[data-active="false"] { display: none; }
+</style>
+
+<script>
+    feather.replace();
+    let currentId = null;
+    let showInactive = false;
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function cerrarModal() { document.getElementById('modalProv').classList.add('hidden'); currentId = null; }
+
+    function abrirNuevo() {
+        currentId = null;
+        document.getElementById('modalTitle').innerText = "Nuevo Registro";
+        document.querySelectorAll('#modalProv input, #modalProv textarea').forEach(i => i.value = "");
+        document.getElementById('modalProv').classList.remove('hidden');
+    }
+
+    // Lógica para botones Editar
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentId = this.dataset.id;
+            document.getElementById('modalTitle').innerText = "Editar Registro";
+            document.getElementById('f_name').value = this.dataset.nombre;
+            document.getElementById('f_phone').value = this.dataset.phone;
+            document.getElementById('f_address').value = this.dataset.address;
+            document.getElementById('modalProv').classList.remove('hidden');
+        });
+    });
+
+    async function procesarGuardado() {
+        const nameInput = document.getElementById('f_name').value;
+        if(!nameInput) {
+            mostrarNotificacion("El nombre comercial es obligatorio", "warning");
+            return;
+        }
+
+        const payload = {
+            id: currentId,
+            name: nameInput,
+            phone: document.getElementById('f_phone').value,
+            address: document.getElementById('f_address').value,
+            active: true
+        };
+        
+        try {
+            const res = await fetch('/proveedores/guardar', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+                mostrarNotificacion("Proveedor guardado exitosamente", "success");
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                mostrarNotificacion("Error al guardar el proveedor", "error");
+            }
+        } catch (e) {
+            mostrarNotificacion("Error de conexión con el servidor", "error");
+        }
+    }
+
+    async function toggleStatus(id) {
+        try {
+            const res = await fetch(`/proveedores/toggle/${id}`, { method: 'POST' });
+            if (res.ok) {
+                mostrarNotificacion("Estado actualizado", "success");
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                mostrarNotificacion("Error al actualizar el estado", "error");
+            }
+        } catch (e) {
+            mostrarNotificacion("Error de conexión con el servidor", "error");
+        }
+    }
+
+    function toggleInactivos() {
+        showInactive = !showInactive;
+        document.getElementById('btnToggleInactivos').innerText = showInactive ? 'Ver solo activos' : 'Ver inactivos';
+        document.querySelectorAll('.prov-row').forEach(row => {
+            if(row.dataset.active === "false") row.style.display = showInactive ? "table-row" : "none";
+        });
+    }
+
+    document.getElementById('busquedaProv').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.prov-row').forEach(row => {
+            const match = row.dataset.nombre.includes(query);
+            row.style.display = match ? "table-row" : "none";
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="p-8 space-y-8 bg-[#FDFCFB] min-h-screen">
+    <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-100">
+            <i data-feather="shopping-cart"></i>
+        </div>
+        <div>
+            <h1 class="text-4xl font-black text-slate-900 italic uppercase leading-none">Compras</h1>
+            <p class="text-orange-500 font-black text-[10px] uppercase tracking-[0.3em] mt-2 ml-1">Ingreso de mercancía y stock</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm space-y-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Proveedor *</label>
+                <select id="idProveedor" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-900 h-14">
+                    {% for p in proveedores %}
+                    <option value="{{ p.idProveedor }}">{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end justify-end">
+                <div class="bg-orange-50 px-8 py-4 rounded-[2rem] text-right">
+                    <p class="text-[10px] font-black text-orange-400 uppercase tracking-widest">Total Estimado</p>
+                    <h2 id="totalVisual" class="text-4xl font-black text-orange-500 italic">$0.00</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-[2.5rem] items-end">
+            <div class="md:col-span-2 space-y-2">
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Insumo de Inventario</label>
+                <select id="temp_insumo" class="w-full p-4 bg-white border-none rounded-2xl font-bold text-slate-700 h-12">
+                    {% for i in insumos %}
+                    <option value="{{ i.idInsumo }}" data-nombre="{{ i.nombre }}" data-unidad="{{ i.unidad }}">
+                        {{ i.nombre }} ({{ i.unidad }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Cantidad</label>
+                <input type="number" step="any" id="temp_qty" class="w-full p-4 bg-white border-none rounded-2xl font-black text-center h-12" placeholder="0">
+            </div>
+            <div class="space-y-2">
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Costo Unit.</label>
+                <input type="number" step="any" id="temp_precio" class="w-full p-4 bg-white border-none rounded-2xl font-black text-center h-12" placeholder="$0.00">
+            </div>
+            <button onclick="agregarFila()" class="w-full h-12 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest">+ Fila</button>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-50">
+            <table class="w-full text-left bg-white">
+                <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4">Insumo</th>
+                        <th class="px-6 py-4 text-center">Cant.</th>
+                        <th class="px-6 py-4 text-center">Costo</th>
+                        <th class="px-6 py-4 text-center">Subtotal</th>
+                        <th class="px-6 py-4"></th>
+                    </tr>
+                </thead>
+                <tbody id="tablaItems" class="divide-y divide-slate-50 font-bold text-slate-700">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="space-y-2">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Notas de la compra</label>
+            <textarea id="notas" class="w-full p-5 bg-slate-50 border-none rounded-[2rem] font-bold h-24 resize-none" placeholder="Observaciones..."></textarea>
+        </div>
+
+        <button onclick="enviarCompra()" class="w-full py-6 bg-orange-500 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl shadow-orange-100 active:scale-95 transition-all">
+            Confirmar Compra
+        </button>
+    </div>
+</div>
+
+<script>
+    let itemsCompra = [];
+    feather.replace();
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function agregarFila() {
+        const select = document.getElementById('temp_insumo');
+        const id = select.value;
+        const nombre = select.options[select.selectedIndex]?.dataset.nombre;
+        const unidad = select.options[select.selectedIndex]?.dataset.unidad;
+        const qty = parseFloat(document.getElementById('temp_qty').value);
+        const precio = parseFloat(document.getElementById('temp_precio').value);
+
+        if(!id || isNaN(qty) || isNaN(precio) || qty <= 0 || precio < 0) {
+            mostrarNotificacion("Completa una cantidad y costo válidos", "warning");
+            return;
+        }
+
+        itemsCompra.push({ idInsumo: id, nombre: nombre, unidad: unidad, cantidad: qty, precio: precio });
+        renderTabla();
+        document.getElementById('temp_qty').value = '';
+        document.getElementById('temp_precio').value = '';
+    }
+
+    function renderTabla() {
+        const tbody = document.getElementById('tablaItems');
+        let total = 0;
+        tbody.innerHTML = '';
+        itemsCompra.forEach((item, index) => {
+            const sub = item.cantidad * item.precio;
+            total += sub;
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 italic uppercase">${item.nombre}</td>
+                    <td class="px-6 py-4 text-center">${item.cantidad} ${item.unidad}</td>
+                    <td class="px-6 py-4 text-center">$${item.precio.toFixed(2)}</td>
+                    <td class="px-6 py-4 text-center text-orange-500 font-black">$${sub.toFixed(2)}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="itemsCompra.splice(${index},1); renderTabla();" class="text-slate-300 hover:text-red-500 transition-colors">
+                            <i data-feather="x-circle" class="w-5 h-5"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('totalVisual').innerText = `$${total.toFixed(2)}`;
+        feather.replace(); // Renderizar iconos de eliminar en nuevas filas
+    }
+
+    async function enviarCompra() {
+        if(itemsCompra.length === 0) {
+            mostrarNotificacion("Agrega al menos un insumo a la compra", "warning");
+            return;
+        }
+        
+        const payload = {
+            idProveedor: document.getElementById('idProveedor').value,
+            total: itemsCompra.reduce((acc, c) => acc + (c.cantidad * c.precio), 0),
+            notas: document.getElementById('notas').value,
+            items: itemsCompra.map(i => ({
+                idInsumo: i.idInsumo, 
+                cantidad: i.cantidad,
+                precio: i.precio
+            }))
+        };
+
+        const btn = document.querySelector('button[onclick="enviarCompra()"]');
+        btn.disabled = true;
+        btn.innerText = "PROCESANDO...";
+
+        try {
+            const res = await fetch('/compras/registrar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+            
+            if(res.ok && result.status === 'success') {
+                mostrarNotificacion("Compra guardada y stock actualizado", "success");
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                mostrarNotificacion(result.mensaje || "Error al procesar la compra", "error");
+                btn.disabled = false;
+                btn.innerText = "CONFIRMAR COMPRA";
+            }
+        } catch (error) {
+            mostrarNotificacion("No se pudo conectar con el servidor", "error");
+            btn.disabled = false;
+            btn.innerText = "CONFIRMAR COMPRA";
+        }
+    }
+</script>
+{% endblock %}

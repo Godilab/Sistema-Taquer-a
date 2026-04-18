@@ -1,0 +1,291 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-[#F9F6F2] p-8 space-y-6 text-slate-700">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-4xl font-black text-[#1A202C]">Inventario</h1>
+            <p class="text-slate-400 font-medium mt-1 uppercase tracking-tighter italic">Control Físico y Rendimiento</p>
+        </div>
+        <button onclick="abrirNuevo()" class="bg-[#F97316] text-white px-7 py-3.5 rounded-2xl font-black shadow-lg shadow-orange-200 active:scale-95 transition-all">
+            + Nuevo insumo
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500"><i data-feather="box"></i></div>
+            <div><p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Total</p><p class="text-2xl font-black">{{ stats.total }}</p></div>
+        </div>
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 text-emerald-500">
+            <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center"><i data-feather="check-circle"></i></div>
+            <div><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Stock Viable</p><p class="text-2xl font-black text-slate-900">{{ stats.ok }}</p></div>
+        </div>
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 text-red-500">
+            <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center"><i data-feather="alert-triangle"></i></div>
+            <div><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Bajo</p><p class="text-2xl font-black">{{ stats.bajo }}</p></div>
+        </div>
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500"><i data-feather="dollar-sign"></i></div>
+            <div><p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Valor Total</p><p class="text-2xl font-black text-slate-900">${{ "{:,.2f}".format(stats.valor) }}</p></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                <tr>
+                    <th class="px-8 py-5">Insumo</th>
+                    <th class="px-4 py-5 text-center">Categoría</th>
+                    <th class="px-4 py-5 text-center">Stock Crudo (Físico)</th>
+                    <th class="px-4 py-5 text-center text-orange-500">Stock Rendimiento</th>
+                    <th class="px-4 py-5 text-center">Costo/U</th>
+                    <th class="px-8 py-5 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for item in insumos %}
+                <tr class="hover:bg-slate-50/40 transition-colors">
+                    <td class="px-8 py-5">
+                        <p class="font-bold {% if item.is_low %}text-red-600{% endif %}">{{ item.nombre }} {% if item.is_low %}⚠️{% endif %}</p>
+                        <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{{ item.proveedor }}</p>
+                    </td>
+                    <td class="px-4 py-5 text-center">
+                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black uppercase">{{ item.categoria }}</span>
+                    </td>
+                    <td class="px-4 py-5 text-center font-black text-slate-700">
+                        {{ item.stock }} <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">{{ item.unidad }}</span>
+                    </td>
+                    <td class="px-4 py-5 text-center font-black text-orange-600 bg-orange-50/30">
+                        {{ "{:,.2f}".format(item.stock_operativo) }} <span class="text-[10px] text-orange-400 font-bold uppercase ml-1">{{ item.unidad_minima }}</span>
+                        <div class="text-[8px] text-slate-400 font-normal">Factor: {{ item.factor }}</div>
+                    </td>
+                    <td class="px-4 py-5 text-center font-bold text-slate-600">${{ "{:,.2f}".format(item.costo) }}</td>
+                    <td class="px-8 py-5 text-right space-x-3">
+                        <button onclick="abrirSuma('{{ item.id }}', '{{ item.nombre }}')" class="text-emerald-500 hover:scale-110 transition-transform"><i data-feather="plus-circle"></i></button>
+                        <button 
+                            class="btn-editar text-slate-300 hover:text-slate-600 transition-colors"
+                            data-id="{{ item.id }}" data-nombre="{{ item.nombre }}" data-cat="{{ item.categoria }}"
+                            data-uni="{{ item.unidad }}" data-unimin="{{ item.unidad_minima }}" data-factor="{{ item.factor }}"
+                            data-stock="{{ item.stock }}" data-min="{{ item.minimo }}"
+                            data-costo="{{ item.costo }}" data-prov="{{ item.proveedor }}"
+                        >
+                            <i data-feather="edit-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalInsumo" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-white rounded-[3.5rem] w-full max-w-2xl p-10 shadow-2xl space-y-6 my-8">
+        <h2 id="modalTitle" class="text-3xl font-black text-center text-slate-900 uppercase italic">Nuevo Insumo</h2>
+        
+        <div class="grid grid-cols-2 gap-5 text-left">
+            <div class="col-span-2 space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Nombre del Insumo *</label>
+                <input id="f_nombre" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Categoría</label>
+                <select id="f_cat" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-orange-500">
+                    {% for c in categorias %}<option value="{{c}}">{{c}}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Proveedor</label>
+                <select id="f_prov" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-orange-500">
+                    <option value="" disabled selected>Elegir proveedor...</option>
+                    {% for p in proveedores %}<option value="{{p}}">{{p}}</option>{% endfor %}
+                </select>
+            </div>
+
+            <div class="col-span-2 border-t border-slate-100 pt-4"><p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Datos de Compra (Físico)</p></div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Unidad de Compra</label>
+                <input id="f_uni" class="w-full p-4 bg-emerald-50 border-none rounded-2xl font-bold text-emerald-900" placeholder="Ej. kg, lata">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Stock Crudo Actual</label>
+                <input type="number" step="0.01" id="f_stock" class="w-full p-4 bg-emerald-50 border-none rounded-2xl font-bold text-center text-emerald-900">
+            </div>
+
+            <div class="col-span-2 border-t border-slate-100 pt-4"><p class="text-[10px] font-black text-orange-500 uppercase tracking-widest">Rendimiento Operativo (Recetas)</p></div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Unidad Operativa</label>
+                <input id="f_uni_min" class="w-full p-4 bg-orange-50 border-none rounded-2xl font-bold text-orange-900" placeholder="Ej. pza, kg_cocido">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Factor / Rendimiento</label>
+                <input type="number" step="0.01" id="f_factor" class="w-full p-4 bg-orange-50 border-none rounded-2xl font-bold text-center text-orange-900" placeholder="Ej. 0.75 o 40">
+            </div>
+
+            <div class="col-span-2 border-t border-slate-100 pt-4"></div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Mínimo Alerta</label>
+                <input type="number" id="f_min" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-center">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Costo Unitario ($)</label>
+                <input type="number" id="f_costo" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-center">
+            </div>
+        </div>
+        <div class="flex gap-4 pt-4">
+            <button onclick="cerrarModal()" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs">Cancelar</button>
+            <button id="btnConfirmar" onclick="procesarGuardado()" class="flex-1 py-5 bg-[#F97316] text-white rounded-2xl font-black shadow-lg uppercase text-xs hover:bg-orange-600 transition-all">Guardar Datos</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalSumaStock" class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-md p-4">
+    <div class="bg-white rounded-[3rem] w-full max-w-sm shadow-2xl p-8 animate-in zoom-in duration-200">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="plus-circle" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 uppercase italic">Sumar Stock</h2>
+            <p id="ms-nombre-insumo" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Insumo</p>
+        </div>
+        <div class="space-y-4">
+            <input type="number" step="0.01" id="ms-cantidad" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-center text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 tracking-widest" placeholder="Cantidad Cruda">
+            <div class="flex gap-4">
+                <button onclick="cerrarModalSuma()" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button onclick="ejecutarSuma()" class="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-emerald-200 hover:bg-emerald-600 transition-colors">Sumar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+    let currentId = null;
+    let sumaId = null; // Variable para rastrear qué insumo se va a sumar
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function cerrarModal() { document.getElementById('modalInsumo').classList.add('hidden'); currentId = null; }
+
+    function abrirNuevo() {
+        currentId = null;
+        document.getElementById('modalTitle').innerText = "Nuevo Insumo";
+        document.querySelectorAll('#modalInsumo input').forEach(i => i.value = "");
+        document.getElementById('f_stock').value = 0;
+        document.getElementById('f_min').value = 0;
+        document.getElementById('f_factor').value = 1;
+        document.getElementById('modalInsumo').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentId = this.dataset.id;
+            document.getElementById('modalTitle').innerText = "Editar Insumo";
+            document.getElementById('f_nombre').value = this.dataset.nombre;
+            document.getElementById('f_cat').value = this.dataset.cat;
+            document.getElementById('f_uni').value = this.dataset.uni;
+            document.getElementById('f_uni_min').value = this.dataset.unimin;
+            document.getElementById('f_factor').value = this.dataset.factor;
+            document.getElementById('f_stock').value = this.dataset.stock;
+            document.getElementById('f_min').value = this.dataset.min;
+            document.getElementById('f_costo').value = this.dataset.costo;
+            document.getElementById('f_prov').value = this.dataset.prov;
+            document.getElementById('modalInsumo').classList.remove('hidden');
+        });
+    });
+
+    async function procesarGuardado() {
+        const payload = {
+            id: currentId,
+            nombre: document.getElementById('f_nombre').value,
+            categoria: document.getElementById('f_cat').value,
+            unidad: document.getElementById('f_uni').value,
+            unidad_minima: document.getElementById('f_uni_min').value,
+            factor: parseFloat(document.getElementById('f_factor').value || 1),
+            stock: parseFloat(document.getElementById('f_stock').value || 0),
+            minimo: parseFloat(document.getElementById('f_min').value || 0),
+            costo: parseFloat(document.getElementById('f_costo').value || 0),
+            proveedor: document.getElementById('f_prov').value
+        };
+
+        if(!payload.nombre) return mostrarNotificacion("El nombre es obligatorio", "warning");
+
+        const btn = document.getElementById('btnConfirmar');
+        btn.disabled = true; btn.innerText = "Guardando...";
+
+        try {
+            const res = await fetch('/inventario/guardar', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if(data.status === 'success') {
+                window.location.reload();
+            } else { 
+                mostrarNotificacion("Error: " + data.mensaje, "error"); 
+                btn.disabled = false; btn.innerText = "Guardar Datos"; 
+            }
+        } catch (e) {
+            mostrarNotificacion("Error de conexión al guardar", "error");
+            btn.disabled = false; btn.innerText = "Guardar Datos";
+        }
+    }
+
+    // --- NUEVA LÓGICA DE SUMAR STOCK SIN PROMPT ---
+    function abrirSuma(id, nom) {
+        sumaId = id;
+        document.getElementById('ms-nombre-insumo').innerText = nom;
+        document.getElementById('ms-cantidad').value = '';
+        document.getElementById('modalSumaStock').classList.remove('hidden');
+        setTimeout(() => document.getElementById('ms-cantidad').focus(), 100);
+    }
+
+    function cerrarModalSuma() {
+        document.getElementById('modalSumaStock').classList.add('hidden');
+        sumaId = null;
+    }
+
+    function ejecutarSuma() {
+        const cant = parseFloat(document.getElementById('ms-cantidad').value);
+        if (!cant || isNaN(cant) || cant <= 0) {
+            mostrarNotificacion("Ingrese una cantidad válida mayor a 0", "warning");
+            return;
+        }
+
+        fetch(`/inventario/sumar/${sumaId}`, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({cantidad: cant})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                window.location.reload();
+            } else {
+                mostrarNotificacion(data.mensaje || "Error al actualizar stock", "error");
+            }
+        })
+        .catch(() => mostrarNotificacion("Error de conexión con el servidor", "error"));
+    }
+</script>
+{% endblock %}

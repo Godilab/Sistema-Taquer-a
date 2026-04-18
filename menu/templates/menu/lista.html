@@ -1,0 +1,247 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="p-8 space-y-8 bg-[#FDFCFB] min-h-screen">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-4xl font-black text-slate-800 tracking-tight italic uppercase">Menú & Carta</h1>
+            <p class="text-orange-500 font-black text-[10px] uppercase tracking-[0.3em] mt-1 ml-1">Control de Productos y Catálogo</p>
+        </div>
+        <button onclick="abrirModal()" class="bg-orange-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-orange-100 hover:scale-95 transition-all uppercase text-xs tracking-widest">
+            + Nuevo Producto
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-50 flex items-center gap-4">
+            <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
+                <i data-feather="layers" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Platillos</p>
+                <p class="text-2xl font-black text-slate-800">{{ productos|length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-50 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] border-b border-slate-50">
+                    <th class="px-8 py-6">Producto</th>
+                    <th class="px-8 py-6">Categoría</th>
+                    <th class="px-8 py-6 text-center">Precio</th>
+                    <th class="px-8 py-6">Descripción</th>
+                    <th class="px-8 py-6 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for p in productos %}
+                <tr class="group hover:bg-slate-50/50 transition-colors">
+                    <td class="px-8 py-6">
+                        <span class="font-black text-slate-700 italic uppercase">{{ p.nombre }}</span>
+                    </td>
+                    <td class="px-8 py-6">
+                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            {{ p.categoria or 'OTRO' }}
+                        </span>
+                    </td>
+                    <td class="px-8 py-6 text-center">
+                        <span class="font-black text-slate-800 text-lg">${{ "{:,.2f}".format(p.precio) }}</span>
+                    </td>
+                    <td class="px-8 py-6">
+                        <p class="text-slate-400 text-xs font-medium italic truncate max-w-[250px]">
+                            {{ p.descripcion or 'Sin descripción registrada...' }}
+                        </p>
+                    </td>
+                    <td class="px-8 py-6 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="abrirEditar({id:'{{p.idProducto}}', nombre:'{{p.nombre}}', precio:'{{p.precio}}', cat:'{{p.categoria}}', desc:'{{p.descripcion}}'})" 
+                                    class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 hover:text-orange-500 hover:border-orange-200 transition-all shadow-sm">
+                                <i data-feather="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="confirmarEliminar('{{ p.idProducto }}', '{{ p.nombre }}')" 
+                                    class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 hover:text-red-500 hover:border-red-200 transition-all shadow-sm">
+                                <i data-feather="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalMenu" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-md p-4">
+    <div class="bg-white rounded-[3.5rem] w-full max-w-lg p-12 shadow-2xl space-y-8 animate-in zoom-in duration-200">
+        <div class="text-center">
+            <h2 id="modalTitle" class="text-3xl font-black text-slate-900 uppercase italic">Registro</h2>
+            <p class="text-[10px] text-orange-500 font-black uppercase tracking-[0.3em] mt-2">Información del Platillo</p>
+        </div>
+        
+        <div class="space-y-5">
+            <input type="hidden" id="m_id">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Nombre</label>
+                <input id="m_nombre" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Precio ($)</label>
+                    <input type="number" id="m_precio" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-center text-slate-900">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Categoría</label>
+                    <select id="m_cat" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-900 appearance-none">
+                        {% for c in categorias %}<option value="{{c}}">{{c}}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-4">Descripción</label>
+                <textarea id="m_desc" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-900 h-24 no-scrollbar resize-none"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-4">
+            <button onclick="cerrarModal()" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs tracking-widest">Cancelar</button>
+            <button onclick="guardarProducto()" class="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-black shadow-xl shadow-orange-100 uppercase text-xs tracking-widest active:scale-95 transition-all">Guardar Datos</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalConfirmarEliminar" class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-md p-4">
+    <div class="bg-white rounded-[3rem] w-full max-w-sm shadow-2xl p-8 animate-in zoom-in duration-200">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-feather="trash-2" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 uppercase italic">Eliminar Platillo</h2>
+            <p id="textoConfirmarEliminar" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">
+                ¿Estás seguro de que deseas eliminar este platillo?
+            </p>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="cancelarEliminar()" class="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs hover:bg-slate-200 transition-colors">Cancelar</button>
+            <button onclick="ejecutarEliminarDefinitivo()" class="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-red-200 hover:bg-red-600 transition-colors">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+
+    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    function mostrarNotificacion(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
+        const icon = tipo === 'error' ? 'alert-triangle' : (tipo === 'warning' ? 'alert-circle' : 'check-circle');
+        
+        toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
+        toast.innerHTML = `<i data-feather="${icon}" class="w-5 h-5"></i><span>${mensaje}</span>`;
+        
+        document.body.appendChild(toast);
+        feather.replace(); 
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // 1. GESTIÓN DE MODAL PLATILLOS
+    function abrirModal() {
+        document.getElementById('m_id').value = "";
+        document.getElementById('modalTitle').innerText = "Nuevo Platillo";
+        document.getElementById('m_nombre').value = "";
+        document.getElementById('m_precio').value = "";
+        document.getElementById('m_desc').value = "";
+        document.getElementById('modalMenu').classList.remove('hidden');
+    }
+
+    function abrirEditar(p) {
+        document.getElementById('m_id').value = p.id;
+        document.getElementById('modalTitle').innerText = "Editar Platillo";
+        document.getElementById('m_nombre').value = p.nombre;
+        document.getElementById('m_precio').value = p.precio;
+        document.getElementById('m_cat').value = p.cat;
+        document.getElementById('m_desc').value = p.desc;
+        document.getElementById('modalMenu').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalMenu').classList.add('hidden');
+    }
+
+    // 2. ACCIÓN DE GUARDAR (CREAR / EDITAR)
+    async function guardarProducto() {
+        const payload = {
+            id: document.getElementById('m_id').value,
+            nombre: document.getElementById('m_nombre').value,
+            precio: parseFloat(document.getElementById('m_precio').value || 0),
+            categoria: document.getElementById('m_cat').value,
+            descripcion: document.getElementById('m_desc').value
+        };
+
+        if(!payload.nombre) {
+            mostrarNotificacion("El nombre es obligatorio", "warning");
+            return;
+        }
+
+        try {
+            const res = await fetch('/menu/guardar', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                mostrarNotificacion("Platillo guardado exitosamente", "success");
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                mostrarNotificacion("Error al guardar el producto", "error");
+            }
+        } catch (error) {
+            mostrarNotificacion("Error de conexión al guardar", "error");
+        }
+    }
+
+    // 3. GESTIÓN DE ELIMINACIÓN CON MODAL
+    let productoAEliminar = null;
+
+    function confirmarEliminar(id, nombre) {
+        productoAEliminar = id;
+        document.getElementById('textoConfirmarEliminar').innerText = `¿Estás seguro de que deseas eliminar el platillo "${nombre.toUpperCase()}"?`;
+        document.getElementById('modalConfirmarEliminar').classList.remove('hidden');
+    }
+
+    function cancelarEliminar() {
+        document.getElementById('modalConfirmarEliminar').classList.add('hidden');
+        productoAEliminar = null;
+    }
+
+    async function ejecutarEliminarDefinitivo() {
+        if (!productoAEliminar) return;
+
+        try {
+            const res = await fetch(`/menu/eliminar/${productoAEliminar}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            if (res.ok) {
+                mostrarNotificacion("Platillo eliminado correctamente", "success");
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                mostrarNotificacion("Error: No se pudo eliminar el platillo", "error");
+                cancelarEliminar();
+            }
+        } catch (error) {
+            mostrarNotificacion("Error de conexión al intentar eliminar", "error");
+            cancelarEliminar();
+        }
+    }
+</script>
+{% endblock %}

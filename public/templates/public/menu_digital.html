@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Taquería | Ordena en línea</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #fffaf7; color: #1f2937; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="pb-32">
+
+    <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-orange-100">
+        <div class="max-w-6xl mx-auto px-5 md:px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-orange-500 flex items-center justify-center text-white text-xl shadow-sm">
+                    逆
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold text-slate-900">La Taquería</h1>
+                    <p class="text-xs text-slate-400">Pide en línea</p>
+                </div>
+            </div>
+
+            <a href="{{ url_for('usuarios.login') }}"
+               class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 py-2 rounded-full text-sm font-semibold transition">
+                <span class="hidden md:inline">Acceso staff</span>
+                <i data-feather="log-in" class="w-4 h-4"></i>
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-5 md:px-8 mt-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 rounded-2xl mb-4 font-bold text-sm flex items-center gap-3 shadow-sm border
+                        {% if category == 'danger' %} bg-red-100 text-red-700 border-red-200 
+                        {% else %} bg-green-100 text-green-700 border-green-200 {% endif %}">
+                        <i data-feather="alert-circle" class="w-5 h-5"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <section class="max-w-6xl mx-auto px-5 md:px-8 pt-2">
+        <div class="bg-white rounded-[2rem] border border-orange-100 shadow-sm overflow-hidden">
+            <div class="grid md:grid-cols-2">
+                <div class="p-7 md:p-10 flex flex-col justify-center">
+                    <p class="text-orange-500 font-bold text-sm">Haz tu pedido</p>
+                    <h2 class="text-3xl md:text-5xl font-black text-slate-900 leading-tight mt-2">
+                        Tacos ricos, fácil y rápido
+                    </h2>
+                    <p class="text-slate-500 mt-4 text-sm md:text-base leading-relaxed">
+                        Elige tus productos, ajusta la cantidad y dinos cómo lo quieres.
+                    </p>
+                </div>
+
+                <div class="bg-gradient-to-br from-orange-500 to-red-500 min-h-[240px] flex items-center justify-center">
+                    <div class="text-center text-white px-6">
+                        <div class="text-7xl mb-3">🌮</div>
+                        <p class="text-2xl font-black">Ordena en línea</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-5 md:px-8 py-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for p in platillos %}
+        <article class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="p-6 flex-1">
+                <div class="w-full h-44 rounded-[1.5rem] bg-orange-50 flex items-center justify-center relative mb-5 overflow-hidden">
+                    <span class="text-7xl">
+                        {% if p.categoria == 'Bebidas' or 'Refresco' in p.nombre %} 🥤
+                        {% elif 'Gringa' in p.nombre %} 🧀
+                        {% else %} 🌮 {% endif %}
+                    </span>
+
+                    <div class="absolute top-4 right-4 bg-white border border-orange-100 px-4 py-1.5 rounded-full shadow-sm">
+                        <p class="text-orange-600 font-extrabold text-sm">${{ p.precio }}</p>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-black text-slate-900">{{ p.nombre }}</h3>
+                <p class="text-sm text-slate-500 mt-2 leading-relaxed">
+                    {{ p.descripcion or 'Preparado con el sazón original de la taquería.' }}
+                </p>
+
+                {% if p.categoria != 'Bebidas' and 'Refresco' not in p.nombre %}
+                <div class="mt-6">
+                    <p class="text-sm font-bold text-slate-800 mb-3">Selecciona cómo lo quieres</p>
+                    <div class="space-y-2">
+                        {% for opt in ['Con verdura', 'Sin verdura', 'Solo cilantro', 'Solo cebolla'] %}
+                        <label class="block cursor-pointer">
+                            <input type="radio" name="opcion_{{ p.idProducto }}" value="{{ opt }}" class="hidden peer" {% if loop.first %}checked{% endif %}>
+                            <div class="rounded-2xl border border-slate-200 px-4 py-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition">
+                                <p class="text-sm font-bold text-slate-800">{{ opt }}</p>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <input type="radio" name="opcion_{{ p.idProducto }}" value="Normal" class="hidden" checked>
+                {% endif %}
+            </div>
+
+            <div class="p-6 pt-0 mt-auto">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-full px-3 py-2 min-w-[150px]">
+                        <button type="button"
+                                onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', -1)"
+                                class="w-8 h-8 rounded-full text-red-500 font-black text-lg flex items-center justify-center hover:bg-red-50">
+                            -
+                        </button>
+
+                        <input id="cant_{{ p.idProducto }}"
+                               type="number"
+                               min="1"
+                               value="1"
+                               onchange="validarCantidadInput('cant_{{ p.idProducto }}')"
+                               class="w-14 text-center font-black text-slate-900 text-lg bg-transparent outline-none border-none">
+
+                        <button type="button"
+                                onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', 1)"
+                                class="w-8 h-8 rounded-full text-emerald-500 font-black text-lg flex items-center justify-center hover:bg-emerald-50">
+                            +
+                        </button>
+                    </div>
+
+                    <button type="button"
+                            onclick="agregarAlPedido('{{ p.idProducto }}', '{{ p.nombre }}', {{ p.precio }}, 'cant_{{ p.idProducto }}')"
+                            class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-full transition shadow-sm">
+                        Agregar
+                    </button>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </section>
+
+    <div id="btnCarrito" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <button onclick="toggleModal()"
+                class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border-4 border-white transition">
+            <i data-feather="shopping-bag" class="w-5 h-5"></i>
+            <span id="totalText" class="text-sm font-extrabold">Ver pedido · $0.00</span>
+        </button>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="px-6 md:px-8 py-5 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">Tu pedido</h2>
+                    <p class="text-sm text-slate-400">Revísalo antes de confirmarlo</p>
+                </div>
+                <button onclick="toggleModal()" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center">
+                    <i data-feather="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="itemsContainer" class="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 no-scrollbar"></div>
+
+            <form action="{{ url_for('public.confirmar_pedido') }}" method="POST" class="p-6 md:p-8 border-t border-slate-100 space-y-4 bg-slate-50">
+                <input type="hidden" name="carrito_json" id="carrito_json">
+                <input type="hidden" name="total_pago" id="total_pago">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="cliente" placeholder="Tu nombre" required
+                           class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
+                    <input type="tel" name="tel" placeholder="WhatsApp" required
+                           class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
+                </div>
+
+                <input type="text" name="direccion" placeholder="¿A dónde mandamos los tacos?" required
+                       class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
+
+                <button type="submit"
+                        class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-2xl transition">
+                    Confirmar pedido
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let carrito = [];
+
+        function obtenerOpcion(idProducto) {
+            const seleccionada = document.querySelector(`input[name="opcion_${idProducto}"]:checked`);
+            return seleccionada ? seleccionada.value : 'Normal';
+        }
+
+        function cambiarCantidadInput(inputId, delta) {
+            const input = document.getElementById(inputId);
+            let valor = parseInt(input.value) || 1;
+            valor += delta;
+            if (valor < 1) valor = 1;
+            input.value = valor;
+        }
+
+        function validarCantidadInput(inputId) {
+            const input = document.getElementById(inputId);
+            let valor = parseInt(input.value);
+            if (isNaN(valor) || valor < 1) valor = 1;
+            input.value = valor;
+        }
+
+        function agregarAlPedido(id, nombre, precio, inputId) {
+            const input = document.getElementById(inputId);
+            let cantidad = parseInt(input.value) || 1;
+
+            const opcion = obtenerOpcion(id);
+
+            const existente = carrito.find(i =>
+                String(i.idProducto) === String(id) &&
+                i.opcion === opcion
+            );
+
+            if (existente) {
+                existente.cantidad += cantidad;
+            } else {
+                carrito.push({
+                    idProducto: id,
+                    nombre: nombre,
+                    precio: parseFloat(precio),
+                    cantidad: cantidad,
+                    opcion: opcion
+                });
+            }
+
+            input.value = 1;
+            actualizar();
+            document.getElementById('btnCarrito').classList.remove('hidden');
+        }
+
+        function actualizar() {
+            const sum = carrito.reduce((s, i) => s + (i.precio * i.cantidad), 0);
+            document.getElementById('total_pago').value = sum.toFixed(2);
+            document.getElementById('carrito_json').value = JSON.stringify(carrito);
+            document.getElementById('totalText').innerText = `Ver pedido · $${sum.toFixed(2)}`;
+
+            const list = document.getElementById('itemsContainer');
+
+            if (carrito.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-14">
+                        <p class="text-slate-400 font-bold">Tu carrito está vacío</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = carrito.map((item, i) => `
+                <div class="bg-slate-50 border border-slate-200 rounded-3xl p-5 flex flex-col gap-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="font-black text-slate-900 text-lg">${item.nombre}</p>
+                            <p class="text-sm text-orange-600 font-bold">$${item.precio.toFixed(2)} x ${item.cantidad}</p>
+                            <p class="text-sm text-slate-500 mt-1">Preparación: ${item.opcion}</p>
+                        </div>
+                        <button type="button"
+                                onclick="quitar(${i})"
+                                class="w-10 h-10 rounded-full bg-white border border-slate-200 text-red-400 hover:text-red-600 flex items-center justify-center">
+                            <i data-feather="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            feather.replace();
+        }
+
+        function quitar(i) {
+            carrito.splice(i, 1);
+            if (carrito.length === 0) {
+                document.getElementById('btnCarrito').classList.add('hidden');
+                toggleModal(); // Cerramos si queda vacío
+            }
+            actualizar();
+        }
+
+        function toggleModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.toggle('hidden');
+        }
+
+        feather.replace();
+    </script>
+</body>
+</html>
