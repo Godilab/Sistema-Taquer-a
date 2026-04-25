@@ -1,285 +1,386 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from sqlalchemy import text
-from models import db, Venta, DetalleVenta, Producto, Insumo
+from models import db
 from datetime import datetime
-import json
-from security import requiere_rol
-
-# --- IMPORTACIONES NOSQL (Persistencia Políglota) ---
-from models import pedidos_collection
-from bson.objectid import ObjectId
+from decimal import Decimal, ROUND_HALF_UP
 
 ventas_bp = Blueprint('ventas', __name__, template_folder='templates')
 
+# =========================================================
+# UTILIDADES Y LÓGICA DE NEGOCIO
+# =========================================================
+
+def d(valor):
+    return Decimal(str(valor or 0))
+
+def normalizar_texto(valor):
+    return (valor or '').strip().lower()
+
+def opcion_a_ingredientes(opcion):
+    op = normalizar_texto(opcion)
+    mapeo = {
+        'con todo': {'cilantro', 'cebolla', 'salsa'},
+        'completo': {'cilantro', 'cebolla', 'salsa'},
+        'todo aparte': {'cilantro', 'cebolla', 'salsa'},
+        'con verdura': {'cilantro', 'cebolla'},
+        'solo verdura': {'cilantro', 'cebolla'},
+        'sin verdura': set(),
+        'solo cilantro': {'cilantro'},
+        'solo cebolla': {'cebolla'},
+        'solo salsa': {'salsa'}
+    }
+    return mapeo.get(op, {'cilantro', 'cebolla', 'salsa'})
+
+def clasificar_insumo_variable(nombre_insumo):
+    nombre = normalizar_texto(nombre_insumo)
+    if 'cilantro' in nombre: return 'cilantro'
+    if 'cebolla' in nombre: return 'cebolla'
+    if 'salsa' in nombre: return 'salsa'
+    return None
+
+def normalizar_unidad(unidad):
+    u = normalizar_texto(unidad)
+    equivalencias = {
+        'gr': 'gr', 'g': 'gr', 'gramo': 'gr', 'gramos': 'gr',
+        'kg': 'kg', 'kilo': 'kg', 'kilos': 'kg', 'kilogramo': 'kg', 'kilogramos': 'kg',
+        'ml': 'ml', 'mililitro': 'ml', 'mililitros': 'ml',
+        'lt': 'lt', 'l': 'lt', 'litro': 'lt', 'litros': 'lt',
+        'pz': 'pz', 'pza': 'pz', 'pzas': 'pz', 'pieza': 'pz', 'piezas': 'pz',
+        'unidad': 'pz', 'unidades': 'pz'
+    }
+    return equivalencias.get(u, u)
+
+def convertir_unidad(cantidad, unidad_origen, unidad_destino):
+    cantidad = d(cantidad)
+    origen = normalizar_unidad(unidad_origen)
+    destino = normalizar_unidad(unidad_destino)
+
+    if not origen or not destino or origen == destino: return cantidad
+
+    if origen == 'gr' and destino == 'kg': return cantidad / Decimal('1000')
+    if origen == 'kg' and destino == 'gr': return cantidad * Decimal('1000')
+    if origen == 'ml' and destino == 'lt': return cantidad / Decimal('1000')
+    if origen == 'lt' and destino == 'ml': return cantidad * Decimal('1000')
+    return cantidad
+
+def obtener_columnas_insumos():
+    query = text("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'insumos'")
+    return set(db.session.execute(query).scalars().all())
+
+def obtener_columna_unidad_stock():
+    columnas = obtener_columnas_insumos()
+    for col in ['unidadCompra', 'unidad_compra', 'unidad', 'unidadMedida', 'unidad_medida']:
+        if col in columnas: return col
+    return None
+
+def obtener_columna_unidad_minima():
+    columnas = obtener_columnas_insumos()
+    for col in ['unidadMinima', 'unidad_minima']:
+        if col in columnas: return col
+    return None
+
+def obtener_receta_producto(id_producto):
+    col_stock_unit = obtener_columna_unidad_stock()
+    col_min_unit = obtener_columna_unidad_minima()
+    select_extra = f", i.{col_stock_unit} AS unidad_stock" if col_stock_unit else ", NULL AS unidad_stock"
+    select_extra += f", i.{col_min_unit} AS unidad_minima" if col_min_unit else ", NULL AS unidad_minima"
+
+    query = text(f"""
+        SELECT dr.idInsumo, dr.cantidad, dr.unidad AS unidad_receta, i.nombre AS nombre_insumo, i.stock {select_extra}
+        FROM recetas r
+        JOIN detallereceta dr ON r.idReceta = dr.idReceta
+        JOIN insumos i ON dr.idInsumo = i.idInsumo
+        WHERE r.idProducto = :idProducto
+    """)
+    rows = db.session.execute(query, {'idProducto': id_producto}).mappings().all()
+
+    return [{
+        'idInsumo': r['idInsumo'], 'cantidad': r['cantidad'], 'unidad_receta': r.get('unidad_receta') or 'pz',
+        'nombre_insumo': r['nombre_insumo'], 'stock': r['stock'],
+        'unidad_stock': r.get('unidad_stock') or r.get('unidad_receta') or 'pz',
+        'unidad_minima': r.get('unidad_minima') or ''
+    } for r in rows]
+
+def obtener_unidad_stock_insumo(id_insumo):
+    col = obtener_columna_unidad_stock()
+    if not col: return ''
+    row = db.session.execute(text(f"SELECT {col} AS unidad_stock FROM insumos WHERE idInsumo = :idInsumo LIMIT 1"), {'idInsumo': id_insumo}).mappings().first()
+    return row['unidad_stock'] if row else ''
+
+def calcular_requerimientos_insumos(items):
+    requeridos = {}
+    for item in items:
+        id_producto = int(item['idProducto'])
+        cantidad_producto = d(item['cantidad'])
+        opcion = item.get('opcion', 'Con todo')
+        ing_permitidos = opcion_a_ingredientes(opcion)
+        receta = obtener_receta_producto(id_producto)
+
+        for insumo in receta:
+            tipo_var = clasificar_insumo_variable(insumo['nombre_insumo'])
+            if tipo_var is not None and tipo_var not in ing_permitidos: continue
+
+            cant_conv = convertir_unidad(d(insumo['cantidad']) * cantidad_producto, insumo.get('unidad_receta') or 'pz', insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz')
+            
+            if insumo['idInsumo'] not in requeridos:
+                requeridos[insumo['idInsumo']] = {'idInsumo': insumo['idInsumo'], 'nombre': insumo['nombre_insumo'], 'cantidad': Decimal('0'), 'unidad': insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz'}
+            requeridos[insumo['idInsumo']]['cantidad'] += cant_conv
+    return requeridos
+
+def validar_stock_disponible(requeridos):
+    faltantes = []
+    for _, dato in requeridos.items():
+        insumo = db.session.execute(text("SELECT idInsumo, nombre, stock FROM insumos WHERE idInsumo = :id LIMIT 1"), {'id': dato['idInsumo']}).mappings().first()
+        if not insumo:
+            faltantes.append(f"Insumo no encontrado (ID {dato['idInsumo']})")
+            continue
+        stock_actual = d(insumo['stock'])
+        cant_req = d(dato['cantidad'])
+        if stock_actual < cant_req:
+            faltantes.append(f"{insumo['nombre']} insuficiente")
+    return faltantes
+
+def calcular_max_absoluto(id_producto, opcion):
+    receta = obtener_receta_producto(id_producto)
+    ing_permitidos = opcion_a_ingredientes(opcion)
+    max_unidades = float('inf')
+    
+    if not receta: return 0
+
+    for insumo in receta:
+        tipo_var = clasificar_insumo_variable(insumo['nombre_insumo'])
+        if tipo_var is not None and tipo_var not in ing_permitidos:
+            continue
+        cant_req_1 = convertir_unidad(d(insumo['cantidad']), insumo.get('unidad_receta') or 'pz', insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz')
+        
+        if cant_req_1 > 0:
+            stock_actual = d(insumo['stock'])
+            posibles = int(stock_actual // cant_req_1)
+            if posibles < max_unidades:
+                max_unidades = posibles
+                
+    return max_unidades if max_unidades != float('inf') else 0
+
+def descontar_stock(requeridos):
+    upd_q = text("UPDATE insumos SET stock = stock - :cant WHERE idInsumo = :id")
+    for _, dato in requeridos.items():
+        db.session.execute(upd_q, {'cant': float(dato['cantidad']), 'id': dato['idInsumo']})
+
+# =========================================================
+# RUTAS POS Y VALIDACIÓN
+# =========================================================
+
 @ventas_bp.route('/')
-@requiere_rol(['Administrador', 'Cajero'])
 def pos_index():
     try:
-        # --- REGLA DE NEGOCIO: CONTROL PREDICTIVO DE INVENTARIO ---
-        query_disponibles = text("""
-            SELECT 
-                p.idProducto, 
-                p.nombre, 
-                p.precio, 
-                p.categoria,
-                COALESCE(
-                    (SELECT MIN(
-                        FLOOR(i.stock / (
-                            CASE 
-                                WHEN i.categoria = 'TORTILLAS' THEN (dr.cantidad / NULLIF(i.merma, 0))
-                                ELSE (dr.cantidad / 1000) / NULLIF(i.merma, 0)
-                            END
-                        ))
-                    )
-                    FROM recetas r
-                    JOIN detallereceta dr ON r.idReceta = r.idReceta
-                    JOIN insumos i ON dr.idInsumo = i.idInsumo
-                    WHERE r.idProducto = p.idProducto
-                    ), 0
-                ) AS max_disponible
-            FROM productos p
-            WHERE p.estado = 'activo'
-        """)
-        
-        result = db.session.execute(query_disponibles)
-        productos_bd = [dict(row) for row in result.mappings().all()]
-
-        lista_cats = [p['categoria'] for p in productos_bd if p['categoria']]
-        categorias_unicas = sorted(list(set(lista_cats)))
-
-        # Se mapea el nuevo campo max_disponible y se ajusta el booleano 'disponible'
-        productos_finales = [{
-            'id': p['idProducto'],
-            'nombre': p['nombre'],
-            'precio': float(p['precio']),
-            'categoria': p['categoria'] or 'General',
-            'disponible': p['max_disponible'] > 0,          # Sigue bloqueando si es 0
-            'max_disponible': int(p['max_disponible'])      # Envía el límite exacto a JavaScript
-        } for p in productos_bd]
-
-        return render_template(
-            'ventas/registro.html',
-            active_page='POS',
-            productos=productos_finales,
-            categorias=categorias_unicas
-        )
-
+        query = text("SELECT idProducto, nombre, precio, categoria, imagen FROM productos WHERE estado = 'activo' ORDER BY nombre ASC")
+        productos_bd = db.session.execute(query).mappings().all()
+        categorias_unicas = sorted(list({p['categoria'] for p in productos_bd if p['categoria']}))
+        productos_finales = [{'id': p['idProducto'], 'nombre': p['nombre'], 'precio': float(p['precio']), 'categoria': p['categoria'] or 'General', 'imagen': p.get('imagen')} for p in productos_bd]
+        return render_template('ventas/registro.html', active_page='POS', productos=productos_finales, categorias=categorias_unicas)
     except Exception as e:
-        print(f"ERROR GET POS: {e}")
-        return f"Error al cargar el POS: {e}", 500
+        return f"Error interno: {e}", 500
 
+@ventas_bp.route('/validar_stock', methods=['POST'])
+def validar_stock():
+    try:
+        data = request.get_json() or {}
+        carrito = data.get('carrito', [])
+        id_prod = data.get('idProducto')
+        opcion = data.get('opcion', '')
+        nombre = data.get('nombre', 'producto')
+
+        if not carrito: return jsonify({"status": "success"})
+        
+        requeridos = calcular_requerimientos_insumos(carrito)
+        faltantes = validar_stock_disponible(requeridos)
+        
+        if faltantes:
+            if id_prod:
+                max_posible = calcular_max_absoluto(id_prod, opcion)
+                return jsonify({
+                    "status": "error", 
+                    "mensaje": f"No hay stock suficiente. Solo alcanzan para {max_posible} '{nombre}'."
+                })
+            return jsonify({"status": "error", "mensaje": "Inventario insuficiente para procesar la orden."})
+            
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "mensaje": str(e)}), 500
 
 @ventas_bp.route('/registrar', methods=['POST'])
-@requiere_rol(['Administrador', 'Cajero'])
 def registrar():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "mensaje": "Sin datos recibidos"}), 400
+        if not data or not data.get('carrito'): return jsonify({"status": "error", "mensaje": "Datos inválidos"}), 400
 
-        id_empleado = data.get('idEmpleado', 1)
-        carrito = data.get('carrito', [])
-        monto_total = data.get('total', 0)
+        requeridos = calcular_requerimientos_insumos(data['carrito'])
+        faltantes = validar_stock_disponible(requeridos)
+        if faltantes: return jsonify({"status": "error", "mensaje": "Stock insuficiente. Revisa el inventario."}), 400
 
-        # 1. Creamos la venta principal (MySQL)
-        nueva_venta = Venta(
-            idEmpleado=id_empleado,
-            fecha=datetime.now(),
-            total=monto_total,
-            estado='pendiente',
-            idCorte=None
-        )
-        db.session.add(nueva_venta)
-        db.session.flush() # Para obtener el idVenta antes del commit
+        descontar_stock(requeridos)
 
-        # --- AQUÍ VA EL BLOQUE NUEVO ---
-        for item in carrito:
-            # Registramos cada producto en el detalle de la venta
-            nuevo_detalle = DetalleVenta(
-                idVenta=nueva_venta.idVenta,
-                idProducto=item['idProducto'],
-                cantidad=item['cantidad'],
-                precio=item['precio'],
-                opcion=item.get('opcion', 'Con verdura')
-            )
-            db.session.add(nuevo_detalle)
+        id_venta = db.session.execute(
+            text("INSERT INTO ventas (idEmpleado, fecha, total, estado) VALUES (:emp, NOW(), :tot, 'completada')"),
+            {'emp': data.get('idEmpleado', 1), 'tot': float(d(data.get('total', 0)))}
+        ).lastrowid
 
-            # Lógica de Explosión de Materiales corregida:
-            # Esta consulta detecta si es Tortilla (usa factor directo) 
-            # o Carne (divide entre 1000 para kg y luego por el factor de cocción)
-            query_descontar = text("""
-                UPDATE insumos i
-                JOIN detallereceta dr ON i.idInsumo = dr.idInsumo
-                JOIN recetas r ON dr.idReceta = r.idReceta
-                SET i.stock = i.stock - (
-                    CASE 
-                        WHEN i.categoria = 'TORTILLAS' THEN (dr.cantidad / NULLIF(i.merma, 0))
-                        ELSE (dr.cantidad / 1000) / NULLIF(i.merma, 0)
-                    END * :cantidad_vendida
-                )
-                WHERE r.idProducto = :id_producto
-            """)
-            db.session.execute(query_descontar, {
-                'cantidad_vendida': item['cantidad'],
-                'id_producto': item['idProducto']
-            })
-        # --- FIN DEL BLOQUE NUEVO ---
+        q_det = text("INSERT INTO detalleVenta (idVenta, idProducto, cantidad, precio, opcion_preparacion) VALUES (:idV, :idP, :cant, :precio, :opcion)")
+        for item in data['carrito']:
+            db.session.execute(q_det, {'idV': id_venta, 'idP': item['idProducto'], 'cant': item['cantidad'], 'precio': item['precio'], 'opcion': item.get('opcion', '')})
 
         db.session.commit()
-        return jsonify({
-            "status": "success",
-            "mensaje": "Venta registrada e inventario actualizado",
-            "id_venta": nueva_venta.idVenta
-        }), 201
-
+        return jsonify({"status": "success", "idVenta": id_venta}), 201
     except Exception as e:
         db.session.rollback()
-        print(f"ERROR POST REGISTRAR: {e}")
         return jsonify({"status": "error", "mensaje": str(e)}), 500
 
+# =========================================================
+# RUTAS WEB (AUTO-ACEPTACIÓN Y NOTIFICACIONES CON CANDADO)
+# =========================================================
 
-@ventas_bp.route('/check_pedidos')
-@requiere_rol(['Administrador', 'Cajero'])
-def check_pedidos():
+@ventas_bp.route('/auto_procesar_pedidos_web')
+def auto_procesar_pedidos_web():
+    """Ruta automática con bloqueo atómico para evitar duplicidad de tickets (Race Condition)."""
     try:
-        count = pedidos_collection.count_documents({"estado": "pendiente"})
-        return jsonify({"nuevos": count})
-    except Exception as e:
-        return jsonify({"nuevos": 0, "error": str(e)}), 500
+        pendientes = db.session.execute(text("SELECT idPedido, nombre_cliente, total FROM pedidos_online WHERE estado = 'pendiente'")).mappings().all()
+        aceptados = []
+        rechazados = []
 
+        for p in pendientes:
+            id_ped = p['idPedido']
+            
+            # CANDADO DE BASE DE DATOS: Intentar reclamar la orden atómicamente. 
+            # Si dos peticiones chocan, solo una afectará filas.
+            claim_res = db.session.execute(
+                text("UPDATE pedidos_online SET estado = 'en_preparacion' WHERE idPedido = :id AND estado = 'pendiente'"), 
+                {'id': id_ped}
+            )
+            
+            if claim_res.rowcount == 0:
+                continue  # Otra petición ya lo procesó, ignoramos para no duplicar.
+                
+            detalles = db.session.execute(text("SELECT idProducto, cantidad, precio, opcion_preparacion FROM detalle_pedido_online WHERE idPedido = :id"), {'id': id_ped}).mappings().all()
+            
+            requeridos = calcular_requerimientos_insumos([{'idProducto': d['idProducto'], 'cantidad': d['cantidad'], 'opcion': d.get('opcion_preparacion', '')} for d in detalles])
+            faltantes = validar_stock_disponible(requeridos)
+            
+            if faltantes:
+                # Reversión de estado si no hay inventario
+                db.session.execute(text("UPDATE pedidos_online SET estado = 'cancelado' WHERE idPedido = :id"), {'id': id_ped})
+                rechazados.append(p['nombre_cliente'])
+            else:
+                descontar_stock(requeridos)
+                id_venta = db.session.execute(
+                    text("INSERT INTO ventas (idEmpleado, fecha, total, estado) VALUES (1, NOW(), :tot, 'pendiente')"),
+                    {'tot': float(d(p['total']))}
+                ).lastrowid
+
+                q_det = text("INSERT INTO detalleVenta (idVenta, idProducto, cantidad, precio, opcion_preparacion) VALUES (:idV, :idP, :cant, :precio, :opcion)")
+                for item in detalles:
+                    db.session.execute(q_det, {'idV': id_venta, 'idP': item['idProducto'], 'cant': item['cantidad'], 'precio': item['precio'], 'opcion': item.get('opcion_preparacion', '')})
+
+                aceptados.append(p['nombre_cliente'])
+        
+        db.session.commit()
+        count_activos = db.session.execute(text("SELECT COUNT(*) FROM pedidos_online WHERE estado = 'en_preparacion'")).scalar()
+
+        return jsonify({"aceptados": aceptados, "rechazados": rechazados, "activos": count_activos})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @ventas_bp.route('/get_pedidos_pendientes')
-@requiere_rol(['Administrador', 'Cajero'])
 def get_pedidos_pendientes():
     try:
-        cursor = pedidos_collection.find({"estado": "pendiente"}).sort("fecha_registro", -1)
-        pedidos = []
-        for doc in cursor:
-            items_str = doc.get('items', '[]')
-            items_lista = json.loads(items_str) if isinstance(items_str, str) else items_str
-
-            pedidos.append({
-                'id': str(doc['_id']),
-                'cliente': doc.get('cliente', 'Sin Nombre'),
-                'telefono': doc.get('telefono', ''),
-                'direccion': doc.get('direccion', 'Sin dirección'),
-                'total': doc.get('total', 0.0),
-                'items': items_lista,
-                'fecha': doc['fecha_registro'].strftime('%H:%M') if 'fecha_registro' in doc else '--:--'
-            })
-        return jsonify(pedidos)
+        query = text("""
+            SELECT po.idPedido, po.idCliente, po.nombre_cliente, po.telefono, po.direccion, po.total, po.fecha,
+                   dpo.idProducto, dpo.cantidad, dpo.precio, dpo.opcion_preparacion, p.nombre AS nombre_producto
+            FROM pedidos_online po
+            JOIN detalle_pedido_online dpo ON po.idPedido = dpo.idPedido
+            JOIN productos p ON dpo.idProducto = p.idProducto
+            WHERE po.estado = 'en_preparacion' ORDER BY po.fecha DESC
+        """)
+        result = db.session.execute(query).mappings().all()
+        pedidos = {}
+        for r in result:
+            if r['idPedido'] not in pedidos:
+                pedidos[r['idPedido']] = {'id': r['idPedido'], 'cliente': r['nombre_cliente'] or 'NA', 'telefono': r['telefono'] or '', 'direccion': r['direccion'] or '', 'total': float(r['total']), 'fecha': r['fecha'].strftime('%H:%M'), 'items': []}
+            pedidos[r['idPedido']]['items'].append({'idProducto': r['idProducto'], 'nombre': r['nombre_producto'], 'cantidad': r['cantidad'], 'precio': float(r['precio']), 'opcion': r['opcion_preparacion'] or ''})
+        return jsonify(list(pedidos.values()))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@ventas_bp.route('/aceptar_pedido_web/<id_pedido>', methods=['POST'])
-@requiere_rol(['Administrador', 'Cajero'])
-def aceptar_pedido_web(id_pedido):
+@ventas_bp.route('/concluir_pedido_web/<int:id_pedido>', methods=['POST'])
+def concluir_pedido_web(id_pedido):
     try:
-        pedidos_collection.update_one(
-            {"_id": ObjectId(id_pedido)},
-            {"$set": {"estado": "completado"}}
-        )
-        return jsonify({"status": "success", "mensaje": "Pedido aceptado"})
+        db.session.execute(text("UPDATE pedidos_online SET estado = 'entregado' WHERE idPedido = :id"), {'id': id_pedido})
+        db.session.commit()
+        return jsonify({"status": "success"})
     except Exception as e:
+        db.session.rollback()
         return jsonify({"status": "error", "mensaje": str(e)}), 500
 
+# =========================================================
+# RUTAS HISTORIAL (TICKETS POS)
+# =========================================================
+
+@ventas_bp.route('/check_ordenes_listas')
+def check_ordenes_listas():
+    try:
+        count = db.session.execute(text("SELECT COUNT(*) FROM ventas WHERE estado != 'cancelado'")).scalar()
+        return jsonify({"listas": count})
+    except Exception as e:
+        return jsonify({"listas": 0}), 500
 
 @ventas_bp.route('/get_ordenes_listas')
-@requiere_rol(['Administrador', 'Cajero'])
 def get_ordenes_listas():
     try:
         query = text("""
-            SELECT v.idVenta, v.fecha, v.estado, p.nombre, dv.cantidad, dv.opcion
+            SELECT v.idVenta, v.fecha, v.estado, p.nombre, dv.cantidad, dv.opcion_preparacion
             FROM ventas v
             JOIN detalleVenta dv ON v.idVenta = dv.idVenta
             JOIN productos p ON dv.idProducto = p.idProducto
-            WHERE v.estado IN ('pendiente', 'listo', 'entregado')
-            ORDER BY v.fecha DESC
+            WHERE v.estado != 'cancelado' ORDER BY v.fecha DESC
         """)
-        result = db.session.execute(query)
-
-        ordenes_dict = {}
-        for row in result:
-            id_v = row.idVenta
-            if id_v not in ordenes_dict:
-                ordenes_dict[id_v] = {
-                    'id': id_v,
-                    'fecha': row.fecha.strftime('%H:%M'),
-                    'estado': row.estado,
-                    'productos': []
-                }
-            ordenes_dict[id_v]['productos'].append({
-                'nombre': row.nombre,
-                'cantidad': row.cantidad,
-                'opcion': row.opcion
-            })
-        return jsonify(list(ordenes_dict.values()))
+        result = db.session.execute(query).mappings().all()
+        ordenes = {}
+        for r in result:
+            if r['idVenta'] not in ordenes:
+                ordenes[r['idVenta']] = {'id': r['idVenta'], 'fecha': r['fecha'].strftime('%H:%M') if r['fecha'] else '', 'estado': r['estado'], 'productos': []}
+            ordenes[r['idVenta']]['productos'].append({'nombre': r['nombre'], 'cantidad': r['cantidad'], 'opcion': r['opcion_preparacion'] or ''})
+        return jsonify(list(ordenes.values()))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @ventas_bp.route('/cancelar_orden/<int:id_venta>', methods=['POST'])
-@requiere_rol(['Administrador', 'Cajero'])
 def cancelar_orden(id_venta):
     try:
-        data = request.get_json()
-        password_admin = data.get('password')
+        data = request.get_json() or {}
+        password_ingresada = data.get('password')
+        user_rol = session.get('user_rol')
 
-        # BUSQUEDA DINÁMICA DEL ADMIN (Evita errores por cambio de ID)
-        from models import Usuario
-        admin = Usuario.query.filter_by(rol='Administrador', estado='activo').first()
+        if user_rol != 1:
+            if not password_ingresada:
+                return jsonify({"status": "error", "mensaje": "Se requieren credenciales de Administrador."}), 401
+            
+            admin = db.session.execute(text("SELECT password FROM usuarios WHERE idRol = 1 AND estado = 'activo' LIMIT 1")).mappings().first()
+            if not admin or admin['password'] != password_ingresada:
+                return jsonify({"status": "error", "mensaje": "Credenciales inválidas."}), 403
 
-        if not admin or admin.password != password_admin:
-            return jsonify({
-                "status": "error", 
-                "mensaje": "❌ Contraseña de Administrador incorrecta o no autorizada."
-            }), 403
+        detalles = db.session.execute(text("SELECT idProducto, cantidad, opcion_preparacion FROM detalleVenta WHERE idVenta = :id"), {'id': id_venta}).mappings().all()
 
-        # 2. Verificar existencia y estado
-        venta = Venta.query.get(id_venta)
-        if not venta or venta.estado == 'cancelado':
-            return jsonify({"status": "error", "mensaje": "Orden no válida para cancelación."}), 400
+        if detalles:
+            items = [{'idProducto': d['idProducto'], 'cantidad': d['cantidad'], 'opcion': d['opcion_preparacion']} for d in detalles]
+            requeridos = calcular_requerimientos_insumos(items)
+            upd_q = text("UPDATE insumos SET stock = stock + :cantidad WHERE idInsumo = :idInsumo")
+            for _, dato in requeridos.items():
+                db.session.execute(upd_q, {'cantidad': float(dato['cantidad']), 'idInsumo': dato['idInsumo']})
 
-        # 3. LÓGICA DE RESTAURACIÓN DE INVENTARIO
-        detalles = DetalleVenta.query.filter_by(idVenta=id_venta).all()
-        for item in detalles:
-            query_restaurar = text("""
-                UPDATE insumos i
-                JOIN detallereceta dr ON i.idInsumo = dr.idInsumo
-                JOIN recetas r ON dr.idReceta = r.idReceta
-                SET i.stock = i.stock + (
-                    CASE 
-                        WHEN i.categoria = 'TORTILLAS' THEN (dr.cantidad / i.merma)
-                        ELSE (dr.cantidad / 1000) / i.merma
-                    END * :cantidad_vendida
-                )
-                WHERE r.idProducto = :id_producto
-            """)
-            db.session.execute(query_restaurar, {
-                'cantidad_vendida': item.cantidad,
-                'id_producto': item.idProducto
-            })
-
-        # 4. Finalizar cancelación
-        venta.estado = 'cancelado'
+        db.session.execute(text("UPDATE ventas SET estado = 'cancelado' WHERE idVenta = :id"), {'id': id_venta})
         db.session.commit()
-        
-        return jsonify({
-            "status": "success", 
-            "mensaje": "✅ Venta cancelada e insumos restaurados."
-        })
+        return jsonify({"status": "success"})
 
     except Exception as e:
         db.session.rollback()
-        print(f"ERROR EN CANCELACIÓN: {e}")
         return jsonify({"status": "error", "mensaje": str(e)}), 500
-    
-@ventas_bp.route('/alertas_stock')
-@requiere_rol(['Administrador', 'Cajero'])
-def alertas_stock():
-    query = text("""
-        SELECT nombre, stock, stock_minimo 
-        FROM insumos 
-        WHERE stock <= stock_minimo
-    """)

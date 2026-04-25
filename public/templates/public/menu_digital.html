@@ -19,7 +19,7 @@
         <div class="max-w-6xl mx-auto px-5 md:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-11 h-11 rounded-full bg-orange-500 flex items-center justify-center text-white text-xl shadow-sm">
-                    逆
+                    🌮
                 </div>
                 <div>
                     <h1 class="text-lg md:text-xl font-extrabold text-slate-900">La Taquería</h1>
@@ -27,11 +27,30 @@
                 </div>
             </div>
 
-            <a href="{{ url_for('usuarios.login') }}"
-               class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 py-2 rounded-full text-sm font-semibold transition">
-                <span class="hidden md:inline">Acceso staff</span>
-                <i data-feather="log-in" class="w-4 h-4"></i>
-            </a>
+            <div class="flex items-center gap-3">
+                {% if cliente_id %}
+                <span class="hidden md:inline text-sm font-bold text-slate-700">
+                    {{ cliente_nombre }}
+                </span>
+                <a href="{{ url_for('clientes.logout') }}"
+                    class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition">
+                    Cerrar sesión
+                    <i data-feather="log-out" class="w-4 h-4"></i>
+                </a>
+                {% else %}
+                <a href="{{ url_for('clientes.login') }}"
+                    class="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition">
+                    Iniciar sesión
+                    <i data-feather="log-in" class="w-4 h-4"></i>
+                </a>
+                {% endif %}
+
+                <a href="{{ url_for('usuarios.login') }}"
+                    class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-500 px-4 py-2 rounded-full text-sm font-semibold transition">
+                    <span class="hidden md:inline">Staff</span>
+                    <i data-feather="shield" class="w-4 h-4"></i>
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -40,7 +59,7 @@
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="p-4 rounded-2xl mb-4 font-bold text-sm flex items-center gap-3 shadow-sm border
-                        {% if category == 'danger' %} bg-red-100 text-red-700 border-red-200 
+                        {% if category == 'danger' or category == 'error' %} bg-red-100 text-red-700 border-red-200 
                         {% else %} bg-green-100 text-green-700 border-green-200 {% endif %}">
                         <i data-feather="alert-circle" class="w-5 h-5"></i>
                         {{ message }}
@@ -59,14 +78,14 @@
                         Tacos ricos, fácil y rápido
                     </h2>
                     <p class="text-slate-500 mt-4 text-sm md:text-base leading-relaxed">
-                        Elige tus productos, ajusta la cantidad y dinos cómo lo quieres.
+                        Elige tus productos, ajusta la cantidad y dinos cómo lo quieres. Tu pedido llegará directo al sistema.
                     </p>
                 </div>
-
                 <div class="bg-gradient-to-br from-orange-500 to-red-500 min-h-[240px] flex items-center justify-center">
                     <div class="text-center text-white px-6">
                         <div class="text-7xl mb-3">🌮</div>
                         <p class="text-2xl font-black">Ordena en línea</p>
+                        <p class="text-sm text-white/90 mt-2">Simple, rápido y sin complicarte</p>
                     </div>
                 </div>
             </div>
@@ -75,14 +94,22 @@
 
     <section class="max-w-6xl mx-auto px-5 md:px-8 py-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {% for p in platillos %}
+        {% set requiere_preparacion = p.categoria|upper in ['TACOS', 'GRINGAS', 'QUESADILLAS', 'TORTAS'] %}
+
         <article class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div class="p-6 flex-1">
                 <div class="w-full h-44 rounded-[1.5rem] bg-orange-50 flex items-center justify-center relative mb-5 overflow-hidden">
+                    
+                    {% if p.imagen %}
+                    <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="w-full h-full object-cover">
+                    {% else %}
                     <span class="text-7xl">
                         {% if p.categoria == 'Bebidas' or 'Refresco' in p.nombre %} 🥤
                         {% elif 'Gringa' in p.nombre %} 🧀
+                        {% elif 'Quesadilla' in p.nombre %} 🫓
                         {% else %} 🌮 {% endif %}
                     </span>
+                    {% endif %}
 
                     <div class="absolute top-4 right-4 bg-white border border-orange-100 px-4 py-1.5 rounded-full shadow-sm">
                         <p class="text-orange-600 font-extrabold text-sm">${{ p.precio }}</p>
@@ -94,18 +121,28 @@
                     {{ p.descripcion or 'Preparado con el sazón original de la taquería.' }}
                 </p>
 
-                {% if p.categoria != 'Bebidas' and 'Refresco' not in p.nombre %}
+                {% if requiere_preparacion %}
                 <div class="mt-6">
                     <p class="text-sm font-bold text-slate-800 mb-3">Selecciona cómo lo quieres</p>
                     <div class="space-y-2">
-                        {% for opt in ['Con verdura', 'Sin verdura', 'Solo cilantro', 'Solo cebolla'] %}
                         <label class="block cursor-pointer">
-                            <input type="radio" name="opcion_{{ p.idProducto }}" value="{{ opt }}" class="hidden peer" {% if loop.first %}checked{% endif %}>
+                            <input type="radio" name="opcion_{{ p.idProducto }}" value="Con todo" class="hidden peer" checked>
                             <div class="rounded-2xl border border-slate-200 px-4 py-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition">
-                                <p class="text-sm font-bold text-slate-800">{{ opt }}</p>
+                                <p class="text-sm font-bold text-slate-800 peer-checked:text-orange-600">Con todo</p>
                             </div>
                         </label>
-                        {% endfor %}
+                        <label class="block cursor-pointer">
+                            <input type="radio" name="opcion_{{ p.idProducto }}" value="Sin verdura" class="hidden peer">
+                            <div class="rounded-2xl border border-slate-200 px-4 py-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition">
+                                <p class="text-sm font-bold text-slate-800 peer-checked:text-orange-600">Sin verdura</p>
+                            </div>
+                        </label>
+                        <label class="block cursor-pointer">
+                            <input type="radio" name="opcion_{{ p.idProducto }}" value="Todo aparte" class="hidden peer">
+                            <div class="rounded-2xl border border-slate-200 px-4 py-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition">
+                                <p class="text-sm font-bold text-slate-800 peer-checked:text-orange-600">Todo aparte</p>
+                            </div>
+                        </label>
                     </div>
                 </div>
                 {% else %}
@@ -116,40 +153,28 @@
             <div class="p-6 pt-0 mt-auto">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-full px-3 py-2 min-w-[150px]">
-                        <button type="button"
-                                onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', -1)"
-                                class="w-8 h-8 rounded-full text-red-500 font-black text-lg flex items-center justify-center hover:bg-red-50">
-                            -
-                        </button>
-
-                        <input id="cant_{{ p.idProducto }}"
-                               type="number"
-                               min="1"
-                               value="1"
-                               onchange="validarCantidadInput('cant_{{ p.idProducto }}')"
-                               class="w-14 text-center font-black text-slate-900 text-lg bg-transparent outline-none border-none">
-
-                        <button type="button"
-                                onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', 1)"
-                                class="w-8 h-8 rounded-full text-emerald-500 font-black text-lg flex items-center justify-center hover:bg-emerald-50">
-                            +
-                        </button>
+                        <button type="button" onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', -1)" class="w-8 h-8 rounded-full text-red-500 font-black text-lg hover:bg-red-50">-</button>
+                        <input id="cant_{{ p.idProducto }}" type="number" min="1" value="1" onchange="validarCantidadInput('cant_{{ p.idProducto }}')" class="w-14 text-center font-black text-slate-900 text-lg bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                        <button type="button" onclick="cambiarCantidadInput('cant_{{ p.idProducto }}', 1)" class="w-8 h-8 rounded-full text-emerald-500 font-black text-lg hover:bg-emerald-50">+</button>
                     </div>
-
                     <button type="button"
-                            onclick="agregarAlPedido('{{ p.idProducto }}', '{{ p.nombre }}', {{ p.precio }}, 'cant_{{ p.idProducto }}')"
+                            onclick="agregarAlPedido('{{ p.idProducto }}', '{{ p.nombre }}', {{ p.precio }}, 'cant_{{ p.idProducto }}', {{ 'true' if requiere_preparacion else 'false' }})"
                             class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-full transition shadow-sm">
                         Agregar
                     </button>
                 </div>
             </div>
         </article>
+        {% else %}
+        <div class="col-span-full bg-white rounded-[2rem] border border-slate-200 py-16 text-center shadow-sm">
+            <p class="text-slate-400 font-bold text-2xl">No hay productos activos</p>
+            <p class="text-slate-500 mt-2">Revisa que el catálogo esté activo y haya insumos suficientes.</p>
+        </div>
         {% endfor %}
     </section>
 
     <div id="btnCarrito" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <button onclick="toggleModal()"
-                class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border-4 border-white transition">
+        <button onclick="toggleModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border-4 border-white transition">
             <i data-feather="shopping-bag" class="w-5 h-5"></i>
             <span id="totalText" class="text-sm font-extrabold">Ver pedido · $0.00</span>
         </button>
@@ -174,20 +199,53 @@
                 <input type="hidden" name="total_pago" id="total_pago">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" name="cliente" placeholder="Tu nombre" required
-                           class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
-                    <input type="tel" name="tel" placeholder="WhatsApp" required
-                           class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
+                    <input type="text" name="cliente" value="{{ cliente_nombre }}" readonly placeholder="Registrate para ordenar" class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none text-slate-500 cursor-not-allowed">
+                    <input type="tel" name="tel" value="{{ cliente_telefono }}" readonly placeholder="Teléfono" class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none text-slate-500 cursor-not-allowed">
                 </div>
 
-                <input type="text" name="direccion" placeholder="¿A dónde mandamos los tacos?" required
-                       class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
+                <input type="text" name="direccion" placeholder="¿A dónde mandamos los tacos?" required class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none focus:border-orange-400">
 
-                <button type="submit"
-                        class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-2xl transition">
+                <div>
+                    <p class="text-sm font-bold text-slate-800 mb-2">Método de pago</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="metodo_pago" value="efectivo" class="hidden peer" checked>
+                            <div class="border border-slate-200 rounded-2xl p-4 text-center font-bold peer-checked:border-green-500 peer-checked:bg-green-50 transition">💵 Efectivo</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="metodo_pago" value="tarjeta" class="hidden peer">
+                            <div class="border border-slate-200 rounded-2xl p-4 text-center font-bold peer-checked:border-blue-500 peer-checked:bg-blue-50 transition">💳 Tarjeta</div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="button" onclick="procesarPago(this)" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-2xl transition">
                     Confirmar pedido
                 </button>
             </form>
+        </div>
+    </div>
+
+    <div id="modalPago" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-6 space-y-6">
+            <h2 class="text-2xl font-black text-slate-900 text-center">💳 Pago con tarjeta</h2>
+            <div id="cardPreview" class="relative w-full h-52 rounded-2xl p-5 text-white shadow-xl transition-all duration-500 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+                <div class="flex justify-between items-center"><span class="text-sm opacity-80">Simulación</span><span id="cardBrand" class="font-bold text-lg">VISA</span></div>
+                <div class="mt-6 text-xl tracking-widest font-mono" id="previewNumber">**** **** **** ****</div>
+                <div class="flex justify-between mt-6 text-sm">
+                    <div><p class="opacity-70">Titular</p><p id="previewName">NOMBRE</p></div>
+                    <div><p class="opacity-70">Expira</p><p id="previewDate">MM/AA</p></div>
+                </div>
+            </div>
+            <input type="text" id="cardNumber" placeholder="Número de tarjeta" oninput="actualizarTarjeta()" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" id="cardDate" placeholder="MM/AA" oninput="actualizarTarjeta()" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+                <input type="text" id="cardCVV" placeholder="CVV" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+            </div>
+            <input type="text" id="cardName" placeholder="Nombre del titular" oninput="actualizarTarjeta()" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+            <button onclick="simularPago()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white font-bold py-3 rounded-2xl transition">Pagar ahora</button>
+            <button onclick="cerrarModalPago()" class="w-full text-slate-400 text-sm">Cancelar</button>
+            <p id="pagoStatus" class="text-center font-bold"></p>
         </div>
     </div>
 
@@ -214,30 +272,21 @@
             input.value = valor;
         }
 
-        function agregarAlPedido(id, nombre, precio, inputId) {
+        function agregarAlPedido(id, nombre, precio, inputId, requierePreparacion) {
             const input = document.getElementById(inputId);
-            let cantidad = parseInt(input.value) || 1;
+            let cantidad = parseInt(input.value);
+            if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
 
-            const opcion = obtenerOpcion(id);
+            const opcion = requierePreparacion ? obtenerOpcion(id) : 'Normal';
+            const existente = carrito.find(i => String(i.idProducto) === String(id) && i.opcion === opcion);
 
-            const existente = carrito.find(i =>
-                String(i.idProducto) === String(id) &&
-                i.opcion === opcion
-            );
-
-            if (existente) {
-                existente.cantidad += cantidad;
-            } else {
-                carrito.push({
-                    idProducto: id,
-                    nombre: nombre,
-                    precio: parseFloat(precio),
-                    cantidad: cantidad,
-                    opcion: opcion
-                });
-            }
+            if (existente) { existente.cantidad += cantidad; } 
+            else { carrito.push({ idProducto: id, nombre: nombre, precio: parseFloat(precio), cantidad: cantidad, opcion: opcion }); }
 
             input.value = 1;
+            const defaultRadio = document.querySelector(`input[name="opcion_${id}"][value="Con todo"]`);
+            if (defaultRadio) defaultRadio.checked = true;
+
             actualizar();
             document.getElementById('btnCarrito').classList.remove('hidden');
         }
@@ -249,13 +298,8 @@
             document.getElementById('totalText').innerText = `Ver pedido · $${sum.toFixed(2)}`;
 
             const list = document.getElementById('itemsContainer');
-
             if (carrito.length === 0) {
-                list.innerHTML = `
-                    <div class="text-center py-14">
-                        <p class="text-slate-400 font-bold">Tu carrito está vacío</p>
-                    </div>
-                `;
+                list.innerHTML = `<div class="text-center py-14"><div class="text-5xl mb-3">🛒</div><p class="text-slate-400 font-bold">Tu carrito está vacío</p></div>`;
                 return;
             }
 
@@ -267,29 +311,100 @@
                             <p class="text-sm text-orange-600 font-bold">$${item.precio.toFixed(2)} x ${item.cantidad}</p>
                             <p class="text-sm text-slate-500 mt-1">Preparación: ${item.opcion}</p>
                         </div>
-                        <button type="button"
-                                onclick="quitar(${i})"
-                                class="w-10 h-10 rounded-full bg-white border border-slate-200 text-red-400 hover:text-red-600 flex items-center justify-center">
-                            <i data-feather="trash-2" class="w-4 h-4"></i>
-                        </button>
+                        <button type="button" onclick="quitar(${i})" class="w-10 h-10 rounded-full bg-white border border-slate-200 text-red-400 hover:text-red-600 flex items-center justify-center"><i data-feather="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <div class="flex items-center bg-white rounded-full border border-slate-200 px-2 py-1 shadow-sm">
+                            <button type="button" onclick="modificarCantidad(${i}, -1)" class="w-8 h-8 rounded-full text-red-500 font-black text-lg">-</button>
+                            <input type="number" min="1" value="${item.cantidad}" onchange="editarCantidad(${i}, this.value)" class="w-14 text-center font-black text-sm text-slate-900 bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                            <button type="button" onclick="modificarCantidad(${i}, 1)" class="w-8 h-8 rounded-full text-emerald-500 font-black text-lg">+</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
             feather.replace();
         }
 
-        function quitar(i) {
-            carrito.splice(i, 1);
-            if (carrito.length === 0) {
-                document.getElementById('btnCarrito').classList.add('hidden');
-                toggleModal(); // Cerramos si queda vacío
-            }
+        function modificarCantidad(i, delta) {
+            if (!carrito[i]) return;
+            carrito[i].cantidad += delta;
+            if (carrito[i].cantidad <= 0) carrito.splice(i, 1);
+            if (carrito.length === 0) document.getElementById('btnCarrito').classList.add('hidden');
             actualizar();
         }
 
-        function toggleModal() {
-            const modal = document.getElementById('modal');
-            modal.classList.toggle('hidden');
+        function editarCantidad(i, valor) {
+            let cantidad = parseInt(valor);
+            if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+            carrito[i].cantidad = cantidad;
+            actualizar();
+        }
+
+        function quitar(i) {
+            carrito.splice(i, 1);
+            if (carrito.length === 0) document.getElementById('btnCarrito').classList.add('hidden');
+            actualizar();
+        }
+
+        function toggleModal() { document.getElementById('modal').classList.toggle('hidden'); }
+        function cerrarModalPago() { document.getElementById('modalPago').classList.add('hidden'); }
+
+        function procesarPago(btn) {
+            // Verificar si el usuario está logueado leyendo el input readonly
+            const sessionValida = document.querySelector('input[name="cliente"]').value;
+            if (!sessionValida) {
+                alert("Debes iniciar sesión para confirmar tu pedido.");
+                window.location.href = "{{ url_for('clientes.login') }}";
+                return;
+            }
+
+            const metodo = document.querySelector('input[name="metodo_pago"]:checked').value;
+            if (metodo === 'tarjeta') {
+                document.getElementById('modalPago').classList.remove('hidden');
+            } else {
+                btn.closest('form').submit();
+            }
+        }
+
+        function simularPago() {
+            const num = document.getElementById('cardNumber').value;
+            const cvv = document.getElementById('cardCVV').value;
+            const status = document.getElementById('pagoStatus');
+            const card = document.getElementById('cardPreview');
+
+            if (num.length < 16 || cvv.length < 3) {
+                status.innerText = "❌ Datos inválidos"; status.className = "text-red-500 text-center font-bold";
+                return;
+            }
+
+            status.innerText = "Procesando pago..."; status.className = "text-blue-500 text-center font-bold";
+            card.classList.add("scale-105", "rotate-1");
+
+            setTimeout(() => {
+                card.classList.remove("rotate-1"); card.classList.add("scale-110");
+                status.innerText = "✅ Pago aprobado"; status.className = "text-green-500 text-center font-bold";
+                setTimeout(() => {
+                    cerrarModalPago();
+                    document.querySelector('form').submit();
+                }, 1200);
+            }, 1500);
+        }
+
+        function actualizarTarjeta() {
+            let numero = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            let nombre = document.getElementById('cardName').value;
+            let fecha = document.getElementById('cardDate').value;
+            
+            document.getElementById('previewNumber').innerText = numero.replace(/(.{4})/g, '$1 ').trim() || '**** **** **** ****';
+            document.getElementById('previewName').innerText = nombre.toUpperCase() || 'NOMBRE';
+            document.getElementById('previewDate').innerText = fecha || 'MM/AA';
+
+            let brand = "VISA", color = "from-indigo-500 via-purple-500 to-pink-500";
+            if (numero.startsWith('5')) { brand = "MASTERCARD"; color = "from-red-500 via-orange-500 to-yellow-500"; } 
+            else if (numero.startsWith('3')) { brand = "AMEX"; color = "from-green-500 via-emerald-500 to-teal-500"; }
+            
+            document.getElementById('cardBrand').innerText = brand;
+            document.getElementById('cardPreview').className = `relative w-full h-52 rounded-2xl p-5 text-white shadow-xl transition-all duration-500 bg-gradient-to-br ${color}`;
         }
 
         feather.replace();

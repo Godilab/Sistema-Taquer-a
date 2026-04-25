@@ -20,6 +20,7 @@ from ventas.finanzas.routes import finanzas_bp
 from dashboard_routes import dashboard_bp
 from usuarios.routes import usuarios_bp
 from public.routes import public_bp
+from clientes.routes import clientes_bp
 
 # Configuración de idioma
 try:
@@ -55,6 +56,7 @@ def create_app():
     app.register_blueprint(mermas_bp, url_prefix='/mermas')
     app.register_blueprint(compras_bp, url_prefix='/compras')
     app.register_blueprint(finanzas_bp, url_prefix='/finanzas')
+    app.register_blueprint(clientes_bp, url_prefix='/clientes')
 
     @app.errorhandler(404)
     def page_not_found(e):

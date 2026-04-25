@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación | La Taquería</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+
+<body class="bg-orange-50 min-h-screen flex items-center justify-center p-6">
+
+    <div class="w-full max-w-md">
+
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 mx-auto bg-orange-500 rounded-2xl flex items-center justify-center text-white text-3xl shadow-lg">
+                🌮
+            </div>
+            <h1 class="text-3xl font-black italic uppercase text-slate-900 mt-4 tracking-tight">
+                Verificación
+            </h1>
+            <p class="text-orange-600 text-xs font-black uppercase tracking-widest mt-1">
+                Ingresa tu código
+            </p>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white rounded-[3rem] p-10 shadow-2xl border border-orange-100 text-center">
+
+            <p class="text-slate-400 text-sm mb-6 font-bold">
+                Enviamos un código a:
+                <span class="text-slate-900">{{ correo }}</span>
+            </p>
+
+            <!-- Mensajes -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-3 rounded-xl text-sm font-bold 
+                            {% if category == 'error' %} bg-red-100 text-red-600 
+                            {% else %} bg-green-100 text-green-600 {% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- FORM -->
+            <form method="POST" id="formCodigo">
+
+                <!-- Inputs OTP -->
+                <div class="flex justify-between gap-3 mb-6">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    <input type="text" maxlength="1" class="otp w-12 h-14 text-center text-xl font-black bg-slate-50 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
+                </div>
+
+                <!-- Hidden -->
+                <input type="hidden" name="codigo" id="codigo">
+
+                <button type="submit"
+                    class="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] uppercase text-xs tracking-widest hover:bg-orange-500 transition-all shadow-xl">
+                    Verificar 🔥
+                </button>
+            </form>
+
+            <!-- Regresar -->
+            <p class="text-xs text-slate-400 mt-6 font-bold">
+                ¿No recibiste el código?
+                <a href="{{ url_for('clientes.registro') }}" class="text-orange-500 hover:underline">
+                    Reintentar
+                </a>
+            </p>
+
+        </div>
+    </div>
+
+<script>
+    const inputs = document.querySelectorAll(".otp");
+
+    inputs.forEach((input, index) => {
+        input.addEventListener("input", (e) => {
+            if (e.target.value.length === 1 && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+        });
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Backspace" && index > 0 && !input.value) {
+                inputs[index - 1].focus();
+            }
+        });
+    });
+
+    document.getElementById("formCodigo").addEventListener("submit", function () {
+        let codigo = "";
+        inputs.forEach(input => codigo += input.value);
+        document.getElementById("codigo").value = codigo;
+    });
+</script>
+
+</body>
+</html>
