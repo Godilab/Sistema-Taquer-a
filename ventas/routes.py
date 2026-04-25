@@ -16,6 +16,12 @@ def d(valor):
 def normalizar_texto(valor):
     return (valor or '').strip().lower()
 
+# SANITIZADOR ABSOLUTO PARA BEBIDAS Y POSTRES
+def es_producto_sin_preparacion(categoria, nombre):
+    cat = normalizar_texto(categoria)
+    nom = normalizar_texto(nombre)
+    return any(k in cat for k in ['bebida', 'postre']) or any(k in nom for k in ['refresco', 'coca', 'agua', 'sprite', 'fanta', 'boing', 'pepsi'])
+
 def opcion_a_ingredientes(opcion):
     op = normalizar_texto(opcion)
     mapeo = {
@@ -212,22 +218,35 @@ def validar_stock():
 def registrar():
     try:
         data = request.get_json()
-        if not data or not data.get('carrito'): return jsonify({"status": "error", "mensaje": "Datos inválidos"}), 400
+        if not data or not data.get('carrito'): 
+            return jsonify({"status": "error", "mensaje": "Datos inválidos"}), 400
 
         requeridos = calcular_requerimientos_insumos(data['carrito'])
         faltantes = validar_stock_disponible(requeridos)
-        if faltantes: return jsonify({"status": "error", "mensaje": "Stock insuficiente. Revisa el inventario."}), 400
+        if faltantes: 
+            return jsonify({"status": "error", "mensaje": "Stock insuficiente. Revisa el inventario."}), 400
 
         descontar_stock(requeridos)
 
         id_venta = db.session.execute(
-            text("INSERT INTO ventas (idEmpleado, fecha, total, estado) VALUES (:emp, NOW(), :tot, 'completada')"),
+            text("INSERT INTO ventas (idEmpleado, fecha, total, estado) VALUES (:emp, NOW(), :tot, 'pendiente')"),
             {'emp': data.get('idEmpleado', 1), 'tot': float(d(data.get('total', 0)))}
         ).lastrowid
 
         q_det = text("INSERT INTO detalleVenta (idVenta, idProducto, cantidad, precio, opcion_preparacion) VALUES (:idV, :idP, :cant, :precio, :opcion)")
+        
         for item in data['carrito']:
-            db.session.execute(q_det, {'idV': id_venta, 'idP': item['idProducto'], 'cant': item['cantidad'], 'precio': item['precio'], 'opcion': item.get('opcion', '')})
+            # SANITIZACIÓN ULTRA AGRESIVA
+            prod_info = db.session.execute(text("SELECT categoria, nombre FROM productos WHERE idProducto = :id LIMIT 1"), {'id': item['idProducto']}).mappings().first()
+            opcion_final = item.get('opcion', '')
+            
+            if prod_info:
+                cat = str(prod_info['categoria'] or '').lower()
+                nom = str(prod_info['nombre'] or '').lower()
+                if 'bebida' in cat or 'postre' in cat or any(x in nom for x in ['refresco', 'coca', 'agua', 'sprite', 'fanta', 'boing', 'pepsi']):
+                    opcion_final = ''
+
+            db.session.execute(q_det, {'idV': id_venta, 'idP': item['idProducto'], 'cant': item['cantidad'], 'precio': item['precio'], 'opcion': opcion_final})
 
         db.session.commit()
         return jsonify({"status": "success", "idVenta": id_venta}), 201
@@ -236,49 +255,52 @@ def registrar():
         return jsonify({"status": "error", "mensaje": str(e)}), 500
 
 # =========================================================
-# RUTAS WEB (AUTO-ACEPTACIÓN Y NOTIFICACIONES CON CANDADO)
+# RUTAS WEB (AUTO-ACEPTACIÓN Y SANITIZACIÓN)
 # =========================================================
 
 @ventas_bp.route('/auto_procesar_pedidos_web')
 def auto_procesar_pedidos_web():
-    """Ruta automática con bloqueo atómico para evitar duplicidad de tickets (Race Condition)."""
     try:
-        pendientes = db.session.execute(text("SELECT idPedido, nombre_cliente, total FROM pedidos_online WHERE estado = 'pendiente'")).mappings().all()
+        pendientes = db.session.execute(text("SELECT idPedido, idVenta, nombre_cliente FROM pedidos_online WHERE estado = 'pendiente'")).mappings().all()
         aceptados = []
         rechazados = []
 
         for p in pendientes:
             id_ped = p['idPedido']
+            id_venta_existente = p['idVenta']
             
-            # CANDADO DE BASE DE DATOS: Intentar reclamar la orden atómicamente. 
-            # Si dos peticiones chocan, solo una afectará filas.
             claim_res = db.session.execute(
                 text("UPDATE pedidos_online SET estado = 'en_preparacion' WHERE idPedido = :id AND estado = 'pendiente'"), 
                 {'id': id_ped}
             )
             
             if claim_res.rowcount == 0:
-                continue  # Otra petición ya lo procesó, ignoramos para no duplicar.
+                continue 
                 
-            detalles = db.session.execute(text("SELECT idProducto, cantidad, precio, opcion_preparacion FROM detalle_pedido_online WHERE idPedido = :id"), {'id': id_ped}).mappings().all()
+            detalles = db.session.execute(text("""
+                SELECT d.idProducto, d.cantidad, d.opcion_preparacion, p.categoria, p.nombre 
+                FROM detalle_pedido_online d
+                JOIN productos p ON d.idProducto = p.idProducto
+                WHERE d.idPedido = :id
+            """), {'id': id_ped}).mappings().all()
             
             requeridos = calcular_requerimientos_insumos([{'idProducto': d['idProducto'], 'cantidad': d['cantidad'], 'opcion': d.get('opcion_preparacion', '')} for d in detalles])
             faltantes = validar_stock_disponible(requeridos)
             
             if faltantes:
-                # Reversión de estado si no hay inventario
                 db.session.execute(text("UPDATE pedidos_online SET estado = 'cancelado' WHERE idPedido = :id"), {'id': id_ped})
+                if id_venta_existente:
+                    db.session.execute(text("UPDATE ventas SET estado = 'cancelado' WHERE idVenta = :idV"), {'idV': id_venta_existente})
                 rechazados.append(p['nombre_cliente'])
             else:
                 descontar_stock(requeridos)
-                id_venta = db.session.execute(
-                    text("INSERT INTO ventas (idEmpleado, fecha, total, estado) VALUES (1, NOW(), :tot, 'pendiente')"),
-                    {'tot': float(d(p['total']))}
-                ).lastrowid
-
-                q_det = text("INSERT INTO detalleVenta (idVenta, idProducto, cantidad, precio, opcion_preparacion) VALUES (:idV, :idP, :cant, :precio, :opcion)")
-                for item in detalles:
-                    db.session.execute(q_det, {'idV': id_venta, 'idP': item['idProducto'], 'cant': item['cantidad'], 'precio': item['precio'], 'opcion': item.get('opcion_preparacion', '')})
+                
+                # SI LA TIENDA EN LÍNEA MANDÓ UN REFRESCO CON VERDURA, LO BORRAMOS DE LA TABLA VENTAS
+                if id_venta_existente:
+                    q_update_det = text("UPDATE detalleVenta SET opcion_preparacion = '' WHERE idVenta = :idV AND idProducto = :idP")
+                    for item in detalles:
+                        if es_producto_sin_preparacion(item['categoria'], item['nombre']):
+                            db.session.execute(q_update_det, {'idV': id_venta_existente, 'idP': item['idProducto']})
 
                 aceptados.append(p['nombre_cliente'])
         
@@ -295,7 +317,7 @@ def get_pedidos_pendientes():
     try:
         query = text("""
             SELECT po.idPedido, po.idCliente, po.nombre_cliente, po.telefono, po.direccion, po.total, po.fecha,
-                   dpo.idProducto, dpo.cantidad, dpo.precio, dpo.opcion_preparacion, p.nombre AS nombre_producto
+                   dpo.idProducto, dpo.cantidad, dpo.precio, dpo.opcion_preparacion, p.nombre AS nombre_producto, p.categoria
             FROM pedidos_online po
             JOIN detalle_pedido_online dpo ON po.idPedido = dpo.idPedido
             JOIN productos p ON dpo.idProducto = p.idProducto
@@ -306,7 +328,10 @@ def get_pedidos_pendientes():
         for r in result:
             if r['idPedido'] not in pedidos:
                 pedidos[r['idPedido']] = {'id': r['idPedido'], 'cliente': r['nombre_cliente'] or 'NA', 'telefono': r['telefono'] or '', 'direccion': r['direccion'] or '', 'total': float(r['total']), 'fecha': r['fecha'].strftime('%H:%M'), 'items': []}
-            pedidos[r['idPedido']]['items'].append({'idProducto': r['idProducto'], 'nombre': r['nombre_producto'], 'cantidad': r['cantidad'], 'precio': float(r['precio']), 'opcion': r['opcion_preparacion'] or ''})
+            
+            opcion_final = '' if es_producto_sin_preparacion(r['categoria'], r['nombre_producto']) else (r['opcion_preparacion'] or '')
+            
+            pedidos[r['idPedido']]['items'].append({'idProducto': r['idProducto'], 'nombre': r['nombre_producto'], 'cantidad': r['cantidad'], 'precio': float(r['precio']), 'opcion': opcion_final})
         return jsonify(list(pedidos.values()))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -315,6 +340,39 @@ def get_pedidos_pendientes():
 def concluir_pedido_web(id_pedido):
     try:
         db.session.execute(text("UPDATE pedidos_online SET estado = 'entregado' WHERE idPedido = :id"), {'id': id_pedido})
+        db.session.commit()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "mensaje": str(e)}), 500
+
+@ventas_bp.route('/aceptar_pedido_web/<int:id_pedido>', methods=['POST'])
+def aceptar_pedido_web(id_pedido):
+    try:
+        pedido = db.session.execute(text("SELECT idPedido, idVenta, nombre_cliente, total, estado FROM pedidos_online WHERE idPedido = :id LIMIT 1"), {'id': id_pedido}).mappings().first()
+        if not pedido or pedido['estado'] != 'pendiente': return jsonify({"status": "error", "mensaje": "Pedido no válido"}), 400
+
+        detalles = db.session.execute(text("""
+            SELECT d.idProducto, d.cantidad, d.precio, d.opcion_preparacion, p.categoria, p.nombre 
+            FROM detalle_pedido_online d
+            JOIN productos p ON d.idProducto = p.idProducto
+            WHERE d.idPedido = :id
+        """), {'id': id_pedido}).mappings().all()
+
+        requeridos = calcular_requerimientos_insumos([{'idProducto': d['idProducto'], 'cantidad': d['cantidad'], 'opcion': d.get('opcion_preparacion', '')} for d in detalles])
+        faltantes = validar_stock_disponible(requeridos)
+        
+        if faltantes: return jsonify({"status": "error", "mensaje": "No hay stock suficiente para surtir el pedido web."}), 400
+        
+        descontar_stock(requeridos)
+        
+        if pedido['idVenta']:
+            q_update_det = text("UPDATE detalleVenta SET opcion_preparacion = '' WHERE idVenta = :idV AND idProducto = :idP")
+            for item in detalles:
+                if es_producto_sin_preparacion(item['categoria'], item['nombre']):
+                    db.session.execute(q_update_det, {'idV': pedido['idVenta'], 'idP': item['idProducto']})
+
+        db.session.execute(text("UPDATE pedidos_online SET estado = 'en_preparacion' WHERE idPedido = :id"), {'id': id_pedido})
         db.session.commit()
         return jsonify({"status": "success"})
     except Exception as e:
@@ -337,7 +395,7 @@ def check_ordenes_listas():
 def get_ordenes_listas():
     try:
         query = text("""
-            SELECT v.idVenta, v.fecha, v.estado, p.nombre, dv.cantidad, dv.opcion_preparacion
+            SELECT v.idVenta, v.fecha, v.estado, p.nombre, p.categoria, dv.cantidad, dv.opcion_preparacion
             FROM ventas v
             JOIN detalleVenta dv ON v.idVenta = dv.idVenta
             JOIN productos p ON dv.idProducto = p.idProducto
@@ -348,7 +406,10 @@ def get_ordenes_listas():
         for r in result:
             if r['idVenta'] not in ordenes:
                 ordenes[r['idVenta']] = {'id': r['idVenta'], 'fecha': r['fecha'].strftime('%H:%M') if r['fecha'] else '', 'estado': r['estado'], 'productos': []}
-            ordenes[r['idVenta']]['productos'].append({'nombre': r['nombre'], 'cantidad': r['cantidad'], 'opcion': r['opcion_preparacion'] or ''})
+            
+            opcion_final = '' if es_producto_sin_preparacion(r['categoria'], r['nombre']) else (r['opcion_preparacion'] or '')
+            
+            ordenes[r['idVenta']]['productos'].append({'nombre': r['nombre'], 'cantidad': r['cantidad'], 'opcion': opcion_final})
         return jsonify(list(ordenes.values()))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -378,6 +439,8 @@ def cancelar_orden(id_venta):
                 db.session.execute(upd_q, {'cantidad': float(dato['cantidad']), 'idInsumo': dato['idInsumo']})
 
         db.session.execute(text("UPDATE ventas SET estado = 'cancelado' WHERE idVenta = :id"), {'id': id_venta})
+        db.session.execute(text("UPDATE pedidos_online SET estado = 'cancelado' WHERE idVenta = :id"), {'id': id_venta})
+        
         db.session.commit()
         return jsonify({"status": "success"})
 

@@ -21,7 +21,6 @@ public_bp = Blueprint('public', __name__, template_folder='templates')
 @public_bp.route('/')
 def menu_digital():
     try:
-        # UNIFICACIÓN: Traemos 'imagen' (Gil) y validamos STOCK DISPONIBLE (Tu versión)
         query = text("""
             SELECT p.idProducto, p.nombre, p.descripcion, p.precio, p.categoria, p.imagen
             FROM productos p
@@ -57,7 +56,7 @@ def menu_digital():
 def confirmar_pedido():
     try:
         # ================================
-        # 1. VALIDAR SEGURIDAD / SESIÓN (Requisito Sínodo)
+        # 1. VALIDAR SEGURIDAD / SESIÓN
         # ================================
         if 'cliente_id' not in session:
             flash('Debes iniciar sesión como cliente para confirmar tu pedido.', 'danger')
@@ -83,7 +82,7 @@ def confirmar_pedido():
             return redirect(url_for('public.menu_digital'))
 
         # ================================
-        # 2. VALIDACIÓN DE INSUMOS ESTRICTA (Tu versión recuperada)
+        # 2. VALIDACIÓN DE INSUMOS ESTRICTA
         # ================================
         for item in items:
             check_query = text("""
@@ -104,7 +103,7 @@ def confirmar_pedido():
                     return redirect(url_for('public.menu_digital'))
 
         # ================================
-        # 3. TRANSACCIÓN BASE DE DATOS (Estructura Relacional de Gil)
+        # 3. TRANSACCIÓN BASE DE DATOS
         # ================================
         estado_pago = 'pagado' if metodo_pago == 'tarjeta' else 'pendiente'
         estado = 'en_preparacion' if metodo_pago == 'tarjeta' else 'pendiente'
@@ -121,19 +120,7 @@ def confirmar_pedido():
         })
         id_pedido = res.lastrowid
 
-        # Insertar Detalle Pedido
-        sql_detalle = text("""
-            INSERT INTO detalle_pedido_online (idPedido, idProducto, cantidad, precio, opcion_preparacion)
-            VALUES (:idPedido, :idProducto, :cantidad, :precio, :opcion_preparacion)
-        """)
-        for item in items:
-            db.session.execute(sql_detalle, {
-                'idPedido': id_pedido, 'idProducto': item['idProducto'],
-                'cantidad': item['cantidad'], 'precio': item['precio'],
-                'opcion_preparacion': item.get('opcion', '')
-            })
-
-        # Insertar Venta Física Automática
+        # Insertar Venta Física Automática (Para que salga en la cocina)
         insert_venta = text("""
             INSERT INTO ventas (idEmpleado, fecha, total, estado, idCorte)
             VALUES (1, NOW(), :total, 'pendiente', NULL)
@@ -141,15 +128,47 @@ def confirmar_pedido():
         res_venta = db.session.execute(insert_venta, {'total': total})
         id_venta = res_venta.lastrowid
 
+        # Consultas Preparadas para el Detalle
+        sql_detalle = text("""
+            INSERT INTO detalle_pedido_online (idPedido, idProducto, cantidad, precio, opcion_preparacion)
+            VALUES (:idPedido, :idProducto, :cantidad, :precio, :opcion_preparacion)
+        """)
+        
         insert_detalle_venta = text("""
             INSERT INTO detalleVenta (idVenta, idProducto, cantidad, precio, opcion_preparacion)
             VALUES (:idVenta, :idProducto, :cantidad, :precio, :opcion)
         """)
+
         for item in items:
-            db.session.execute(insert_detalle_venta, {
-                'idVenta': id_venta, 'idProducto': item['idProducto'],
+            id_prod = item['idProducto']
+            opcion_bruta = item.get('opcion', '').strip()
+            
+            # 🔥 SANITIZACIÓN ESTRICTA: Consultar qué tipo de producto es realmente
+            prod_info = db.session.execute(
+                text("SELECT nombre, categoria FROM productos WHERE idProducto = :id LIMIT 1"),
+                {'id': id_prod}
+            ).mappings().first()
+
+            if prod_info:
+                cat = str(prod_info['categoria'] or '').lower()
+                nom = str(prod_info['nombre'] or '').lower()
+                
+                # Si es bebida o postre, forzar que la opción quede en blanco
+                if 'bebida' in cat or 'postre' in cat or any(x in nom for x in ['refresco', 'coca', 'agua', 'sprite', 'fanta', 'boing', 'pepsi', 'jugo']):
+                    opcion_bruta = ''
+
+            # Guardar en pedidos_online
+            db.session.execute(sql_detalle, {
+                'idPedido': id_pedido, 'idProducto': id_prod,
                 'cantidad': item['cantidad'], 'precio': item['precio'],
-                'opcion': item.get('opcion', '')
+                'opcion_preparacion': opcion_bruta
+            })
+
+            # Guardar en ventas (Cocina)
+            db.session.execute(insert_detalle_venta, {
+                'idVenta': id_venta, 'idProducto': id_prod,
+                'cantidad': item['cantidad'], 'precio': item['precio'],
+                'opcion': opcion_bruta
             })
 
         # Vincular tablas

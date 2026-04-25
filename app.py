@@ -23,13 +23,14 @@ from public.routes import public_bp
 from clientes.routes import clientes_bp
 
 # Configuración de idioma
-try:
-    locale.setlocale(locale.LC_TIME, "es_ES.UTF-8") 
-except:
+import locale
+SUPPORTED_LOCALES = ["es_ES.UTF-8", "spanish", "es_MX.UTF-8"]
+for loc in SUPPORTED_LOCALES:
     try:
-        locale.setlocale(locale.LC_TIME, "spanish") 
-    except:
-        pass 
+        locale.setlocale(locale.LC_TIME, loc)
+        break
+    except locale.Error:
+        continue
 
 def create_app():
     app = Flask(__name__)
