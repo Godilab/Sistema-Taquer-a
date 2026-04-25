@@ -33,48 +33,42 @@ def lista():
             detalles = db.session.execute(ing_query, {'id': r['idReceta']}).mappings().all()
             
             ingredientes_vista = []
+            detalles_edicion = [] # Arreglo saneado para el frontend
             costo_total_receta = 0.0 
             
             for d in detalles:
                 cant_db = float(d['cantidad'])
                 costo_kg_lt = float(d['costo_insumo'])
                 uni_receta = (d['unidad_receta'] or 'pz').lower()
-                uni_compra = (d['unidadCompra'] or 'kg').lower()
                 
                 # --- LÓGICA DE COSTEO PROFESIONAL ---
-                # Caso A: Gramos o Mililitros (Convertir a KG/LT)
                 if uni_receta in ['gr', 'ml']:
-                    # Si guardaste '50', convertimos a 0.05 para multiplicar por el precio del kilo
-                    factor = 1000.0 if cant_db >= 1.0 else 1.0
-                    subtotal_ingrediente = (cant_db / factor) * costo_kg_lt
-                
-                # Caso B: Piezas (Especial para tortillas)
+                    # La BD guarda el valor entero (ej. 50), se divide / 1000 para obtener el costo Kg/Lt
+                    subtotal_ingrediente = (cant_db / 1000.0) * costo_kg_lt
                 elif uni_receta == 'pz':
                     if "tortilla" in d['insumo_nombre'].lower():
-                        # Si son 2 tortillas, dividimos entre 40 pz/kg y multiplicamos por precio del kilo
                         subtotal_ingrediente = (cant_db / 40.0) * costo_kg_lt
                     else:
-                        # Para otros artículos por pieza (ej. un refresco o un domo)
                         subtotal_ingrediente = cant_db * costo_kg_lt
-                
                 else:
                     subtotal_ingrediente = cant_db * costo_kg_lt
 
                 costo_total_receta += subtotal_ingrediente
 
                 # --- LÓGICA DE VISUALIZACIÓN PARA EL USUARIO ---
-                # Mostramos números enteros en la interfaz para que sea legible (50 gr en lugar de 0.05 kg)
-                if uni_receta in ['gr', 'ml'] and cant_db < 1.0:
-                    cant_para_interfaz = cant_db * 1000.0
-                else:
-                    cant_para_interfaz = cant_db
-
-                cant_formateada = "{:,.0f}".format(cant_para_interfaz) if cant_para_interfaz % 1 == 0 else "{:,.2f}".format(cant_para_interfaz)
+                cant_formateada = "{:,.0f}".format(cant_db) if cant_db % 1 == 0 else "{:,.2f}".format(cant_db)
 
                 ingredientes_vista.append({
                     'nombre': d['insumo_nombre'],
                     'cantidad': cant_formateada,
-                    'unidad': d['unidad_receta'] or 'pz'
+                    'unidad': uni_receta
+                })
+
+                # --- LÓGICA DE EDICIÓN ---
+                detalles_edicion.append({
+                    'idInsumo': d['idInsumo'],
+                    'cantidad': cant_db,
+                    'unidad': uni_receta # Mapeo correcto de llave para evitar el 'pz' por defecto en JS
                 })
             
             recetas_procesadas.append({
@@ -84,10 +78,9 @@ def lista():
                 'rendimiento': r['rendimientoPorcion'] or 1,
                 'ingredientes': ingredientes_vista,
                 'costo_total': round(costo_total_receta, 2),
-                'detalles_raw': [dict(d) for d in detalles]
+                'detalles_raw': detalles_edicion # Pasamos el arreglo estructuralmente correcto
             })
 
-        # Listas para el modal
         productos_libres = db.session.execute(text("""
             SELECT idProducto, nombre FROM productos 
             WHERE estado='activo' AND idProducto NOT IN (SELECT idProducto FROM recetas)
@@ -113,7 +106,6 @@ def guardar():
         rendimiento = data.get('rendimiento', 1)
         ingredientes = data.get('ingredientes', [])
 
-        # 1. Gestionar Cabecera de Receta
         check_receta = db.session.execute(
             text("SELECT idReceta FROM recetas WHERE idProducto = :idP"), 
             {'idP': id_producto}
@@ -125,7 +117,6 @@ def guardar():
                 text("UPDATE recetas SET rendimientoPorcion = :ren WHERE idReceta = :id"),
                 {'ren': rendimiento, 'id': id_receta}
             )
-            # Limpiar detalles para re-insertar la nueva versión
             db.session.execute(text("DELETE FROM detallereceta WHERE idReceta = :id"), {'id': id_receta})
         else:
             res = db.session.execute(
@@ -134,17 +125,11 @@ def guardar():
             )
             id_receta = res.lastrowid
 
-        # 2. Inserción con Normalización (Gr/Ml -> Kg/Lt)
+        # 2. Inserción Directa sin interferir en las conversiones
         for ing in ingredientes:
             cant_original = float(ing['cantidad'])
             unidad = str(ing['unidad']).lower()
             
-            # Si el usuario escribe 50 y selecciona 'gr', guardamos 0.05
-            if unidad in ['gr', 'ml']:
-                cant_para_db = cant_original / 1000.0
-            else:
-                cant_para_db = cant_original
-
             db.session.execute(
                 text("""
                     INSERT INTO detallereceta (idReceta, idInsumo, cantidad, unidad) 
@@ -153,13 +138,13 @@ def guardar():
                 {
                     'idR': id_receta, 
                     'idI': ing['idInsumo'], 
-                    'cant': cant_para_db, 
+                    'cant': cant_original, # Se almacena la integridad de lo capturado (ej. 50 gr)
                     'und': unidad
                 }
             )
         
         db.session.commit()
-        return jsonify({"status": "success", "mensaje": "Receta guardada y normalizada"})
+        return jsonify({"status": "success", "mensaje": "Receta guardada exitosamente"})
         
     except Exception as e:
         db.session.rollback()

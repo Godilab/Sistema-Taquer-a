@@ -57,10 +57,11 @@ def normalizar_unidad(unidad):
     }
     return equivalencias.get(u, u)
 
-def convertir_unidad(cantidad, unidad_origen, unidad_destino):
+def convertir_unidad(cantidad, unidad_origen, unidad_destino, nombre_insumo=''):
     cantidad = d(cantidad)
     origen = normalizar_unidad(unidad_origen)
     destino = normalizar_unidad(unidad_destino)
+    nombre = normalizar_texto(nombre_insumo)
 
     if not origen or not destino or origen == destino: return cantidad
 
@@ -68,6 +69,14 @@ def convertir_unidad(cantidad, unidad_origen, unidad_destino):
     if origen == 'kg' and destino == 'gr': return cantidad * Decimal('1000')
     if origen == 'ml' and destino == 'lt': return cantidad / Decimal('1000')
     if origen == 'lt' and destino == 'ml': return cantidad * Decimal('1000')
+    
+    # REGLA DE NEGOCIO: Conversión estandarizada para Tortillas (40 pz = 1 Kg)
+    if 'tortilla' in nombre:
+        if origen == 'pz' and (destino == 'kg' or destino == 'paquete'): 
+            return cantidad / Decimal('40')
+        if (origen == 'kg' or origen == 'paquete') and destino == 'pz': 
+            return cantidad * Decimal('40')
+
     return cantidad
 
 def obtener_columnas_insumos():
@@ -92,8 +101,11 @@ def obtener_receta_producto(id_producto):
     select_extra = f", i.{col_stock_unit} AS unidad_stock" if col_stock_unit else ", NULL AS unidad_stock"
     select_extra += f", i.{col_min_unit} AS unidad_minima" if col_min_unit else ", NULL AS unidad_minima"
 
+    # Se extrae el rendimientoPorcion dinámicamente
     query = text(f"""
-        SELECT dr.idInsumo, dr.cantidad, dr.unidad AS unidad_receta, i.nombre AS nombre_insumo, i.stock {select_extra}
+        SELECT dr.idInsumo, dr.cantidad, dr.unidad AS unidad_receta, i.nombre AS nombre_insumo, i.stock,
+               COALESCE(r.rendimientoPorcion, 1) AS rendimiento
+               {select_extra}
         FROM recetas r
         JOIN detallereceta dr ON r.idReceta = dr.idReceta
         JOIN insumos i ON dr.idInsumo = i.idInsumo
@@ -102,8 +114,12 @@ def obtener_receta_producto(id_producto):
     rows = db.session.execute(query, {'idProducto': id_producto}).mappings().all()
 
     return [{
-        'idInsumo': r['idInsumo'], 'cantidad': r['cantidad'], 'unidad_receta': r.get('unidad_receta') or 'pz',
-        'nombre_insumo': r['nombre_insumo'], 'stock': r['stock'],
+        'idInsumo': r['idInsumo'], 
+        'cantidad': r['cantidad'], 
+        'rendimiento': r['rendimiento'],
+        'unidad_receta': r.get('unidad_receta') or 'pz',
+        'nombre_insumo': r['nombre_insumo'], 
+        'stock': r['stock'],
         'unidad_stock': r.get('unidad_stock') or r.get('unidad_receta') or 'pz',
         'unidad_minima': r.get('unidad_minima') or ''
     } for r in rows]
@@ -127,7 +143,17 @@ def calcular_requerimientos_insumos(items):
             tipo_var = clasificar_insumo_variable(insumo['nombre_insumo'])
             if tipo_var is not None and tipo_var not in ing_permitidos: continue
 
-            cant_conv = convertir_unidad(d(insumo['cantidad']) * cantidad_producto, insumo.get('unidad_receta') or 'pz', insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz')
+            # LÓGICA DE RENDIMIENTO
+            rendimiento_factor = d(insumo['rendimiento'])
+            cantidad_real_por_unidad = d(insumo['cantidad']) / rendimiento_factor if rendimiento_factor > 0 else d(insumo['cantidad'])
+
+            # Se inyecta el nombre_insumo para habilitar conversiones especiales (ej. Tortillas)
+            cant_conv = convertir_unidad(
+                cantidad_real_por_unidad * cantidad_producto, 
+                insumo.get('unidad_receta') or 'pz', 
+                insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz',
+                insumo['nombre_insumo'] 
+            )
             
             if insumo['idInsumo'] not in requeridos:
                 requeridos[insumo['idInsumo']] = {'idInsumo': insumo['idInsumo'], 'nombre': insumo['nombre_insumo'], 'cantidad': Decimal('0'), 'unidad': insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz'}
@@ -158,7 +184,17 @@ def calcular_max_absoluto(id_producto, opcion):
         tipo_var = clasificar_insumo_variable(insumo['nombre_insumo'])
         if tipo_var is not None and tipo_var not in ing_permitidos:
             continue
-        cant_req_1 = convertir_unidad(d(insumo['cantidad']), insumo.get('unidad_receta') or 'pz', insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz')
+        
+        # LÓGICA DE RENDIMIENTO
+        rendimiento_factor = d(insumo['rendimiento'])
+        cantidad_real_por_unidad = d(insumo['cantidad']) / rendimiento_factor if rendimiento_factor > 0 else d(insumo['cantidad'])
+
+        cant_req_1 = convertir_unidad(
+            cantidad_real_por_unidad, 
+            insumo.get('unidad_receta') or 'pz', 
+            insumo.get('unidad_stock') or insumo.get('unidad_receta') or 'pz',
+            insumo['nombre_insumo']
+        )
         
         if cant_req_1 > 0:
             stock_actual = d(insumo['stock'])

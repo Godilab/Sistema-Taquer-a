@@ -7,12 +7,11 @@ import smtplib
 from email.mime.text import MIMEText
 import json
 
-# Definición directa del Blueprint
+# 🔥 IMPORTACIÓN DEL MOTOR CENTRALIZADO DE INVENTARIO 🔥
+from ventas.routes import calcular_requerimientos_insumos, validar_stock_disponible
+
 clientes_bp = Blueprint('clientes', __name__, template_folder='templates')
 
-# =========================
-# CONFIG CORREO
-# =========================
 EMAIL = "gp760642@gmail.com"
 PASSWORD = "onql lpox tghm igal"
 
@@ -21,16 +20,11 @@ public_bp = Blueprint('public', __name__, template_folder='templates')
 @public_bp.route('/')
 def menu_digital():
     try:
+        # Se muestran los productos activos, la validación de stock se hace al pagar
         query = text("""
             SELECT p.idProducto, p.nombre, p.descripcion, p.precio, p.categoria, p.imagen
             FROM productos p
             WHERE p.estado = 'activo'
-            AND NOT EXISTS (
-                SELECT 1 FROM recetas r
-                JOIN detallereceta dr ON r.idReceta = dr.idReceta
-                JOIN insumos i ON dr.idInsumo = i.idInsumo
-                WHERE r.idProducto = p.idProducto AND i.stock < (dr.cantidad / 1000)
-            )
             ORDER BY p.nombre ASC
         """)
         result = db.session.execute(query)
@@ -55,9 +49,7 @@ def menu_digital():
 @public_bp.route('/pedido/confirmar', methods=['POST'])
 def confirmar_pedido():
     try:
-        # ================================
-        # 1. VALIDAR SEGURIDAD / SESIÓN
-        # ================================
+        # 1. VALIDAR SESIÓN
         if 'cliente_id' not in session:
             flash('Debes iniciar sesión como cliente para confirmar tu pedido.', 'danger')
             return redirect(url_for('clientes.login'))
@@ -81,30 +73,15 @@ def confirmar_pedido():
             flash('El pedido está vacío.', 'danger')
             return redirect(url_for('public.menu_digital'))
 
-        # ================================
-        # 2. VALIDACIÓN DE INSUMOS ESTRICTA
-        # ================================
-        for item in items:
-            check_query = text("""
-                SELECT i.nombre, i.stock, (dr.cantidad / 1000) * :cant AS ocupado
-                FROM recetas r
-                JOIN detallereceta dr ON r.idReceta = dr.idReceta
-                JOIN insumos i ON dr.idInsumo = i.idInsumo
-                WHERE r.idProducto = :idP
-            """)
-            insumos = db.session.execute(check_query, {
-                "cant": item['cantidad'], 
-                "idP": item['idProducto']
-            }).mappings().all()
-            
-            for ins in insumos:
-                if ins['stock'] < ins['ocupado']:
-                    flash(f"¡Lo sentimos! Ya no tenemos suficiente stock de {ins['nombre']} para tu pedido.", "danger")
-                    return redirect(url_for('public.menu_digital'))
+        # 2. VALIDACIÓN DE INSUMOS UNIFICADA (POS + WEB)
+        requeridos = calcular_requerimientos_insumos(items)
+        faltantes = validar_stock_disponible(requeridos)
 
-        # ================================
-        # 3. TRANSACCIÓN BASE DE DATOS
-        # ================================
+        if faltantes:
+            flash(f"¡Lo sentimos! Ya no tenemos suficiente stock para preparar tu pedido. Faltan: {', '.join(faltantes)}", "danger")
+            return redirect(url_for('public.menu_digital'))
+
+        # 3. TRANSACCIÓN EN BASE DE DATOS
         estado_pago = 'pagado' if metodo_pago == 'tarjeta' else 'pendiente'
         estado = 'en_preparacion' if metodo_pago == 'tarjeta' else 'pendiente'
 
@@ -120,7 +97,7 @@ def confirmar_pedido():
         })
         id_pedido = res.lastrowid
 
-        # Insertar Venta Física Automática (Para que salga en la cocina)
+        # Insertar Venta Física Automática (Para cocina)
         insert_venta = text("""
             INSERT INTO ventas (idEmpleado, fecha, total, estado, idCorte)
             VALUES (1, NOW(), :total, 'pendiente', NULL)
@@ -128,7 +105,6 @@ def confirmar_pedido():
         res_venta = db.session.execute(insert_venta, {'total': total})
         id_venta = res_venta.lastrowid
 
-        # Consultas Preparadas para el Detalle
         sql_detalle = text("""
             INSERT INTO detalle_pedido_online (idPedido, idProducto, cantidad, precio, opcion_preparacion)
             VALUES (:idPedido, :idProducto, :cantidad, :precio, :opcion_preparacion)
@@ -143,7 +119,7 @@ def confirmar_pedido():
             id_prod = item['idProducto']
             opcion_bruta = item.get('opcion', '').strip()
             
-            # 🔥 SANITIZACIÓN ESTRICTA: Consultar qué tipo de producto es realmente
+            # Sanitización de bebidas y postres
             prod_info = db.session.execute(
                 text("SELECT nombre, categoria FROM productos WHERE idProducto = :id LIMIT 1"),
                 {'id': id_prod}
@@ -152,19 +128,16 @@ def confirmar_pedido():
             if prod_info:
                 cat = str(prod_info['categoria'] or '').lower()
                 nom = str(prod_info['nombre'] or '').lower()
-                
-                # Si es bebida o postre, forzar que la opción quede en blanco
                 if 'bebida' in cat or 'postre' in cat or any(x in nom for x in ['refresco', 'coca', 'agua', 'sprite', 'fanta', 'boing', 'pepsi', 'jugo']):
                     opcion_bruta = ''
 
-            # Guardar en pedidos_online
+            # Guardar detalles
             db.session.execute(sql_detalle, {
                 'idPedido': id_pedido, 'idProducto': id_prod,
                 'cantidad': item['cantidad'], 'precio': item['precio'],
                 'opcion_preparacion': opcion_bruta
             })
 
-            # Guardar en ventas (Cocina)
             db.session.execute(insert_detalle_venta, {
                 'idVenta': id_venta, 'idProducto': id_prod,
                 'cantidad': item['cantidad'], 'precio': item['precio'],

@@ -99,7 +99,6 @@
         <article class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div class="p-6 flex-1">
                 <div class="w-full h-44 rounded-[1.5rem] bg-orange-50 flex items-center justify-center relative mb-5 overflow-hidden">
-                    
                     {% if p.imagen %}
                     <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="w-full h-full object-cover">
                     {% else %}
@@ -110,7 +109,6 @@
                         {% else %} 🌮 {% endif %}
                     </span>
                     {% endif %}
-
                     <div class="absolute top-4 right-4 bg-white border border-orange-100 px-4 py-1.5 rounded-full shadow-sm">
                         <p class="text-orange-600 font-extrabold text-sm">${{ p.precio }}</p>
                     </div>
@@ -199,7 +197,7 @@
                 <input type="hidden" name="total_pago" id="total_pago">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" name="cliente" value="{{ cliente_nombre }}" readonly placeholder="Registrate para ordenar" class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none text-slate-500 cursor-not-allowed">
+                    <input type="text" name="cliente" value="{{ cliente_nombre }}" readonly placeholder="Regístrate para ordenar" class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none text-slate-500 cursor-not-allowed">
                     <input type="tel" name="tel" value="{{ cliente_telefono }}" readonly placeholder="Teléfono" class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 font-medium text-sm outline-none text-slate-500 cursor-not-allowed">
                 </div>
 
@@ -237,12 +235,14 @@
                     <div><p class="opacity-70">Expira</p><p id="previewDate">MM/AA</p></div>
                 </div>
             </div>
-            <input type="text" id="cardNumber" placeholder="Número de tarjeta" oninput="actualizarTarjeta()" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+            
+            <input type="tel" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" oninput="formatearYActualizar(this)" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none font-mono">
+            
             <div class="grid grid-cols-2 gap-3">
-                <input type="text" id="cardDate" placeholder="MM/AA" oninput="actualizarTarjeta()" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none">
-                <input type="text" id="cardCVV" placeholder="CVV" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+                <input type="tel" id="cardDate" placeholder="MM/AA" maxlength="5" oninput="formatearFecha(this)" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none text-center">
+                <input type="tel" id="cardCVV" placeholder="CVV" maxlength="4" oninput="this.value = this.value.replace(/\D/g, '')" class="border border-slate-200 rounded-2xl px-4 py-3 outline-none text-center">
             </div>
-            <input type="text" id="cardName" placeholder="Nombre del titular" oninput="actualizarTarjeta()" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none">
+            <input type="text" id="cardName" placeholder="Nombre del titular" oninput="actualizarNombre(this)" class="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none uppercase">
             <button onclick="simularPago()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white font-bold py-3 rounded-2xl transition">Pagar ahora</button>
             <button onclick="cerrarModalPago()" class="w-full text-slate-400 text-sm">Cancelar</button>
             <p id="pagoStatus" class="text-center font-bold"></p>
@@ -250,6 +250,29 @@
     </div>
 
     <script>
+        function actualizarNombre(input) {
+            // Convierte todo a mayúsculas y lo pasa a la tarjeta
+            let valor = input.value.toUpperCase();
+            document.getElementById('previewName').innerText = valor || 'NOMBRE';
+        }
+
+        function formatearFecha(input) {
+            // 1. Borra todo lo que no sea número
+            let valor = input.value.replace(/\D/g, '');
+            
+            // 2. Limita a 4 números máximos (M-M-A-A)
+            if (valor.length > 4) valor = valor.slice(0, 4);
+            
+            // 3. Pone el slash "/" automáticamente después de los primeros 2 dígitos
+            if (valor.length > 2) {
+                valor = valor.slice(0, 2) + '/' + valor.slice(2);
+            }
+            
+            // 4. Actualiza el input y la vista previa
+            input.value = valor;
+            document.getElementById('previewDate').innerText = valor || 'MM/AA';
+        }
+        
         let carrito = [];
 
         function obtenerOpcion(idProducto) {
@@ -350,7 +373,6 @@
         function cerrarModalPago() { document.getElementById('modalPago').classList.add('hidden'); }
 
         function procesarPago(btn) {
-            // Verificar si el usuario está logueado leyendo el input readonly
             const sessionValida = document.querySelector('input[name="cliente"]').value;
             if (!sessionValida) {
                 alert("Debes iniciar sesión para confirmar tu pedido.");
@@ -366,45 +388,49 @@
             }
         }
 
-        function simularPago() {
-            const num = document.getElementById('cardNumber').value;
-            const cvv = document.getElementById('cardCVV').value;
-            const status = document.getElementById('pagoStatus');
-            const card = document.getElementById('cardPreview');
-
-            if (num.length < 16 || cvv.length < 3) {
-                status.innerText = "❌ Datos inválidos"; status.className = "text-red-500 text-center font-bold";
-                return;
-            }
-
-            status.innerText = "Procesando pago..."; status.className = "text-blue-500 text-center font-bold";
-            card.classList.add("scale-105", "rotate-1");
-
-            setTimeout(() => {
-                card.classList.remove("rotate-1"); card.classList.add("scale-110");
-                status.innerText = "✅ Pago aprobado"; status.className = "text-green-500 text-center font-bold";
-                setTimeout(() => {
-                    cerrarModalPago();
-                    document.querySelector('form').submit();
-                }, 1200);
-            }, 1500);
-        }
-
-        function actualizarTarjeta() {
-            let numero = document.getElementById('cardNumber').value.replace(/\s/g, '');
-            let nombre = document.getElementById('cardName').value;
-            let fecha = document.getElementById('cardDate').value;
+        function formatearYActualizar(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length > 16) valor = valor.slice(0, 16);
             
-            document.getElementById('previewNumber').innerText = numero.replace(/(.{4})/g, '$1 ').trim() || '**** **** **** ****';
-            document.getElementById('previewName').innerText = nombre.toUpperCase() || 'NOMBRE';
-            document.getElementById('previewDate').innerText = fecha || 'MM/AA';
-
+            let formateado = valor.replace(/(\d{4})(?=\d)/g, '$1 ');
+            input.value = formateado;
+            
+            document.getElementById('previewNumber').innerText = formateado || '**** **** **** ****';
+            
             let brand = "VISA", color = "from-indigo-500 via-purple-500 to-pink-500";
-            if (numero.startsWith('5')) { brand = "MASTERCARD"; color = "from-red-500 via-orange-500 to-yellow-500"; } 
-            else if (numero.startsWith('3')) { brand = "AMEX"; color = "from-green-500 via-emerald-500 to-teal-500"; }
+            if (valor.startsWith('5')) { 
+                brand = "MASTERCARD"; 
+                color = "from-red-500 via-orange-500 to-yellow-500"; 
+            } else if (valor.startsWith('3')) { 
+                brand = "AMEX"; 
+                color = "from-green-500 via-emerald-500 to-teal-500"; 
+            }
             
             document.getElementById('cardBrand').innerText = brand;
             document.getElementById('cardPreview').className = `relative w-full h-52 rounded-2xl p-5 text-white shadow-xl transition-all duration-500 bg-gradient-to-br ${color}`;
+        }
+
+        function simularPago() {
+            const num = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const cvv = document.getElementById('cardCVV').value;
+            const status = document.getElementById('pagoStatus');
+
+            if (num.length !== 16 || cvv.length < 3) {
+                status.innerText = "❌ La tarjeta debe tener 16 dígitos exactos"; 
+                status.className = "text-red-500 text-center font-bold text-xs mt-2";
+                return;
+            }
+
+            status.innerText = "Procesando pago (Simulación)...";
+            status.className = "text-blue-500 text-center font-bold text-xs mt-2";
+
+            setTimeout(() => {
+                status.innerText = "✅ Pago aprobado";
+                status.className = "text-green-500 text-center font-bold text-xs mt-2";
+                setTimeout(() => {
+                    document.querySelector('form').submit();
+                }, 1000);
+            }, 1500);
         }
 
         feather.replace();
