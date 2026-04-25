@@ -32,52 +32,59 @@
     </div>
 
     <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-        <table class="w-full text-left">
-            <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                <tr>
-                    <th class="px-8 py-5">Insumo</th>
-                    <th class="px-4 py-5 text-center">Categoría</th>
-                    <th class="px-4 py-5 text-center">Stock Crudo (Físico)</th>
-                    <th class="px-4 py-5 text-center text-orange-500">Stock Rendimiento</th>
-                    <th class="px-4 py-5 text-center">Costo/U</th>
-                    <th class="px-8 py-5 text-right">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-                {% for item in insumos %}
-                <tr class="hover:bg-slate-50/40 transition-colors">
-                    <td class="px-8 py-5">
-                        <p class="font-bold {% if item.is_low %}text-red-600{% endif %}">{{ item.nombre }} {% if item.is_low %}⚠️{% endif %}</p>
-                        <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{{ item.proveedor }}</p>
-                    </td>
-                    <td class="px-4 py-5 text-center">
-                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black uppercase">{{ item.categoria }}</span>
-                    </td>
-                    <td class="px-4 py-5 text-center font-black text-slate-700">
-                        {{ item.stock }} <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">{{ item.unidad }}</span>
-                    </td>
-                    <td class="px-4 py-5 text-center font-black text-orange-600 bg-orange-50/30">
-                        {{ "{:,.2f}".format(item.stock_operativo) }} <span class="text-[10px] text-orange-400 font-bold uppercase ml-1">{{ item.unidad_minima }}</span>
-                        <div class="text-[8px] text-slate-400 font-normal">Factor: {{ item.factor }}</div>
-                    </td>
-                    <td class="px-4 py-5 text-center font-bold text-slate-600">${{ "{:,.2f}".format(item.costo) }}</td>
-                    <td class="px-8 py-5 text-right space-x-3">
-                        <button onclick="abrirSuma('{{ item.id }}', '{{ item.nombre }}')" class="text-emerald-500 hover:scale-110 transition-transform"><i data-feather="plus-circle"></i></button>
-                        <button 
-                            class="btn-editar text-slate-300 hover:text-slate-600 transition-colors"
-                            data-id="{{ item.id }}" data-nombre="{{ item.nombre }}" data-cat="{{ item.categoria }}"
-                            data-uni="{{ item.unidad }}" data-unimin="{{ item.unidad_minima }}" data-factor="{{ item.factor }}"
-                            data-stock="{{ item.stock }}" data-min="{{ item.minimo }}"
-                            data-costo="{{ item.costo }}" data-prov="{{ item.proveedor }}"
-                        >
-                            <i data-feather="edit-2" class="w-4 h-4"></i>
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <table class="w-full text-left">
+        <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+            <tr>
+                <th class="px-8 py-5">Insumo</th>
+                <th class="px-4 py-5 text-center">Categoría</th>
+                <th class="px-4 py-5 text-center">Stock Crudo (Físico)</th>
+                <th class="px-4 py-5 text-center text-orange-500">Stock Rendimiento</th>
+                <th class="px-4 py-5 text-center">Costo/U</th>
+                <th class="px-8 py-5 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+            {% for item in insumos %}
+            <tr class="hover:bg-slate-50/40 transition-colors">
+                <td class="px-8 py-5">
+                    <p class="font-bold {% if item.is_low %}text-red-600{% endif %}">{{ item.nombre }} {% if item.is_low %}⚠️{% endif %}</p>
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{{ item.proveedor }}</p>
+                </td>
+                <td class="px-4 py-5 text-center">
+                    <span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black uppercase">{{ item.categoria }}</span>
+                </td>
+                <td class="px-4 py-5 text-center font-black text-slate-700">
+                    {{ item.stock }} <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">{{ item.unidad }}</span>
+                </td>
+                <td class="px-4 py-5 text-center font-black text-orange-600 bg-orange-50/30">
+                    {{ "{:,.2f}".format(item.stock_operativo) }} <span class="text-[10px] text-orange-400 font-bold uppercase ml-1">{{ item.unidad_minima }}</span>
+                    <div class="text-[8px] text-slate-400 font-normal">Factor: {{ item.factor }}</div>
+                </td>
+                <td class="px-4 py-5 text-center font-bold text-slate-600">${{ "{:,.2f}".format(item.costo) }}</td>
+                <td class="px-8 py-5 text-right space-x-3">
+                    <button onclick="abrirSuma('{{ item.id }}', '{{ item.nombre }}')" class="text-emerald-500 hover:scale-110 transition-transform">
+                        <i data-feather="plus-circle"></i>
+                    </button>
+                    
+                    <button 
+                        class="btn-editar text-slate-300 hover:text-slate-600 transition-colors"
+                        data-id="{{ item.id }}" data-nombre="{{ item.nombre }}" data-cat="{{ item.categoria }}"
+                        data-uni="{{ item.unidad }}" data-unimin="{{ item.unidad_minima }}" data-factor="{{ item.factor }}"
+                        data-stock="{{ item.stock }}" data-min="{{ item.minimo }}"
+                        data-costo="{{ item.costo }}" data-prov="{{ item.proveedor }}"
+                    >
+                        <i data-feather="edit-2" class="w-4 h-4"></i>
+                    </button>
+
+                    <button onclick="confirmarEliminar('{{ item.id }}', '{{ item.nombre }}')" class="text-red-300 hover:text-red-500 hover:scale-110 transition-all">
+                        <i data-feather="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 </div>
 
 <div id="modalInsumo" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 overflow-y-auto">
@@ -160,11 +167,38 @@
 </div>
 
 <script>
+    /**
+ * Solicita confirmación y ejecuta la eliminación de un insumo.
+ */
+async function confirmarEliminar(id, nombre) {
+    if (!confirm(`¿Estás seguro de eliminar "${nombre}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/inventario/eliminar/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            mostrarNotificacion(data.mensaje);
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            // Se muestra el error de integridad (insumo en uso) o error de servidor
+            mostrarNotificacion(data.mensaje, "error");
+        }
+    } catch (e) {
+        mostrarNotificacion("Error de conexión al intentar eliminar", "error");
+    }
+}
+
     feather.replace();
     let currentId = null;
-    let sumaId = null; // Variable para rastrear qué insumo se va a sumar
+    let sumaId = null;
 
-    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
+    // --- 1. SISTEMA DE NOTIFICACIONES ---
     function mostrarNotificacion(mensaje, tipo = 'success') {
         const toast = document.createElement('div');
         const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
@@ -183,53 +217,85 @@
         }, 3000);
     }
 
-    function cerrarModal() { document.getElementById('modalInsumo').classList.add('hidden'); currentId = null; }
+    // --- 2. GESTIÓN DE MODALES (NUEVO / EDITAR) ---
+    function cerrarModal() { 
+        document.getElementById('modalInsumo').classList.add('hidden'); 
+        currentId = null; 
+    }
 
     function abrirNuevo() {
         currentId = null;
         document.getElementById('modalTitle').innerText = "Nuevo Insumo";
-        document.querySelectorAll('#modalInsumo input').forEach(i => i.value = "");
+        // Limpiar todos los inputs
+        document.querySelectorAll('#modalInsumo input, #modalInsumo select').forEach(i => i.value = "");
         document.getElementById('f_stock').value = 0;
         document.getElementById('f_min').value = 0;
-        document.getElementById('f_factor').value = 1;
+        document.getElementById('f_factor').value = 1.0;
         document.getElementById('modalInsumo').classList.remove('hidden');
     }
 
-    document.querySelectorAll('.btn-editar').forEach(btn => {
-        btn.addEventListener('click', function() {
-            currentId = this.dataset.id;
-            document.getElementById('modalTitle').innerText = "Editar Insumo";
-            document.getElementById('f_nombre').value = this.dataset.nombre;
-            document.getElementById('f_cat').value = this.dataset.cat;
-            document.getElementById('f_uni').value = this.dataset.uni;
-            document.getElementById('f_uni_min').value = this.dataset.unimin;
-            document.getElementById('f_factor').value = this.dataset.factor;
-            document.getElementById('f_stock').value = this.dataset.stock;
-            document.getElementById('f_min').value = this.dataset.min;
-            document.getElementById('f_costo').value = this.dataset.costo;
-            document.getElementById('f_prov').value = this.dataset.prov;
-            document.getElementById('modalInsumo').classList.remove('hidden');
-        });
-    });
+    // Función unificada para abrir edición (Carga los datos en el modal)
+    /**
+ * Carga la información de un insumo en el modal para su edición.
+ * @param {Object} insumo - Objeto con los datos del insumo (proveniente de la DB o dataset).
+ */
+function abrirEditar(insumo) {
+    // 1. Identificar y asignar el ID global para la operación de guardado
+    currentId = insumo.id || insumo.idInsumo;
+    
+    // 2. Actualizar la interfaz del modal
+    const modal = document.getElementById('modalInsumo');
+    document.getElementById('modalTitle').innerText = "Editar Insumo";
 
+    // 3. Mapeo de datos generales (usando operadores OR para compatibilidad de nombres)
+    document.getElementById('f_nombre').value = insumo.nombre || '';
+    document.getElementById('f_cat').value    = insumo.cat || insumo.categoria || '';
+    document.getElementById('f_prov').value   = insumo.prov || insumo.proveedor || '';
+    document.getElementById('f_uni').value    = insumo.uni || insumo.unidad || insumo.unidadCompra || '';
+    
+    // 4. Mapeo de valores numéricos de stock y costo
+    document.getElementById('f_stock').value  = insumo.stock || 0;
+    document.getElementById('f_min').value    = insumo.min || insumo.minimo || insumo.stockMinimo || 0;
+    document.getElementById('f_costo').value  = insumo.costo || insumo.costoUnidad || 0;
+
+    // 5. CORRECCIÓN CRÍTICA: Datos de Rendimiento y Merma
+    // Mapeamos 'unidadMinima' (DB) o 'unimin' (Dataset) al input operativo
+    document.getElementById('f_uni_min').value = insumo.unimin || insumo.unidadMinima || insumo.unidad_minima || '';
+    
+    // Mapeamos 'merma' (DB) o 'factor' (Dataset) al input de rendimiento
+    // Si no existe, se asigna 1.0 para que el cálculo de rendimiento no sea cero
+    document.getElementById('f_factor').value = insumo.factor || insumo.merma || 1.0;
+
+    // 6. Mostrar el modal con las transiciones correspondientes
+    modal.classList.remove('hidden');
+    
+    // Opcional: Ejecutar feather para refrescar iconos dentro del modal si los hay
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+}
+
+    // --- 3. PERSISTENCIA (GUARDAR EN DB) ---
     async function procesarGuardado() {
-        const payload = {
-            id: currentId,
-            nombre: document.getElementById('f_nombre').value,
-            categoria: document.getElementById('f_cat').value,
-            unidad: document.getElementById('f_uni').value,
-            unidad_minima: document.getElementById('f_uni_min').value,
-            factor: parseFloat(document.getElementById('f_factor').value || 1),
-            stock: parseFloat(document.getElementById('f_stock').value || 0),
-            minimo: parseFloat(document.getElementById('f_min').value || 0),
-            costo: parseFloat(document.getElementById('f_costo').value || 0),
-            proveedor: document.getElementById('f_prov').value
-        };
+    const payload = {
+        idInsumo: currentId,
+        nombre: document.getElementById('f_nombre').value,
+        categoria: document.getElementById('f_cat').value,
+        unidad: document.getElementById('f_uni').value,
+        stock: parseFloat(document.getElementById('f_stock').value || 0),
+        minimo: parseFloat(document.getElementById('f_min').value || 0),
+        costo: parseFloat(document.getElementById('f_costo').value || 0),
+        proveedor: document.getElementById('f_prov').value,
+        // USAR ESTOS NOMBRES EXACTOS
+        unidad_minima: document.getElementById('f_uni_min').value,
+        factor: parseFloat(document.getElementById('f_factor').value || 1)
+    };
 
         if(!payload.nombre) return mostrarNotificacion("El nombre es obligatorio", "warning");
 
         const btn = document.getElementById('btnConfirmar');
-        btn.disabled = true; btn.innerText = "Guardando...";
+        btn.disabled = true; 
+        btn.innerText = "Guardando...";
 
         try {
             const res = await fetch('/inventario/guardar', {
@@ -240,18 +306,21 @@
             const data = await res.json();
             
             if(data.status === 'success') {
-                window.location.reload();
+                mostrarNotificacion("Datos guardados correctamente");
+                setTimeout(() => window.location.reload(), 800);
             } else { 
                 mostrarNotificacion("Error: " + data.mensaje, "error"); 
-                btn.disabled = false; btn.innerText = "Guardar Datos"; 
+                btn.disabled = false; 
+                btn.innerText = "Guardar Datos"; 
             }
         } catch (e) {
             mostrarNotificacion("Error de conexión al guardar", "error");
-            btn.disabled = false; btn.innerText = "Guardar Datos";
+            btn.disabled = false; 
+            btn.innerText = "Guardar Datos";
         }
     }
 
-    // --- NUEVA LÓGICA DE SUMAR STOCK SIN PROMPT ---
+    // --- 4. ENTRADAS DE STOCK (SUMA RÁPIDA) ---
     function abrirSuma(id, nom) {
         sumaId = id;
         document.getElementById('ms-nombre-insumo').innerText = nom;
@@ -265,27 +334,49 @@
         sumaId = null;
     }
 
-    function ejecutarSuma() {
+    async function ejecutarSuma() {
         const cant = parseFloat(document.getElementById('ms-cantidad').value);
         if (!cant || isNaN(cant) || cant <= 0) {
             mostrarNotificacion("Ingrese una cantidad válida mayor a 0", "warning");
             return;
         }
 
-        fetch(`/inventario/sumar/${sumaId}`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({cantidad: cant})
-        })
-        .then(res => res.json())
-        .then(data => {
+        try {
+            const res = await fetch(`/inventario/sumar/${sumaId}`, {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({cantidad: cant})
+            });
+            const data = await res.json();
+            
             if(data.status === 'success') {
                 window.location.reload();
             } else {
                 mostrarNotificacion(data.mensaje || "Error al actualizar stock", "error");
             }
-        })
-        .catch(() => mostrarNotificacion("Error de conexión con el servidor", "error"));
+        } catch(e) {
+            mostrarNotificacion("Error de conexión con el servidor", "error");
+        }
     }
+
+    // Inicializar los botones de edición que vienen renderizados desde el servidor (si existen)
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Convierte el dataset a un objeto insumo compatible
+            const insumoData = {
+                idInsumo: this.dataset.id,
+                nombre: this.dataset.nombre,
+                categoria: this.dataset.cat,
+                unidadCompra: this.dataset.uni,
+                unidadMinima: this.dataset.unimin,
+                merma: this.dataset.factor,
+                stock: this.dataset.stock,
+                stockMinimo: this.dataset.min,
+                costoUnidad: this.dataset.costo,
+                proveedor: this.dataset.prov
+            };
+            abrirEditar(insumoData);
+        });
+    });
 </script>
 {% endblock %}

@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
+from sqlalchemy import text
 from models import db, Compra, DetalleCompra, Insumo, Proveedor
 from decimal import Decimal
 from security import requiere_rol
@@ -6,59 +7,79 @@ from security import requiere_rol
 compras_bp = Blueprint('compras', __name__, template_folder='templates')
 
 @compras_bp.route('/')
-@requiere_rol(['Administrador'])
+@requiere_rol(['Administrador', 'Cajero'])
 def index():
     try:
-        proveedores = Proveedor.query.filter_by(estado='activo').all()
-        insumos = Insumo.query.all() # Traemos el inventario
-        historial = Compra.query.order_by(Compra.fecha.desc()).all()
+        # Usamos el ORM para las consultas simples de carga
+        proveedores = Proveedor.query.filter_by(estado='activo').order_by(Proveedor.nombre.asc()).all()
+        insumos = Insumo.query.order_by(Insumo.nombre.asc()).all()
+        historial = Compra.query.order_by(Compra.fecha.desc()).limit(10).all()
+        
         return render_template('compras/registro.html', 
                                proveedores=proveedores, 
                                insumos=insumos, 
                                historial=historial,
                                active_page='Compras')
     except Exception as e:
-        return f"Error al cargar compras: {e}", 500
+        return f"Error: {e}", 500
 
 @compras_bp.route('/registrar', methods=['POST'])
-@requiere_rol(['Administrador'])
+@requiere_rol(['Administrador', 'Cajero'])
 def registrar():
     try:
         data = request.get_json()
-        
-        # 1. Crear el encabezado
+        if not data:
+            return jsonify({"status": "error", "mensaje": "Sin datos"}), 400
+
+        id_proveedor = data.get('idProveedor')
+        items = data.get('items', [])
+        total_compra = Decimal(str(data.get('total', 0)))
+
+        # 1. Insertar Compra (Encabezado) usando el ORM para obtener el ID fácil
         nueva_compra = Compra(
-            idProveedor=data['idProveedor'],
-            total=Decimal(str(data['total'])),
-            notas=data.get('notas', '')
+            idProveedor=id_proveedor,
+            total=total_compra,
+            notas=data.get('notas', ''),
+            idCorte=None 
         )
         db.session.add(nueva_compra)
         db.session.flush()
 
-        # 2. Registrar detalles y sumar al inventario
-        for item in data['items']:
-            cantidad_decimal = Decimal(str(item['cantidad']))
-            
+        # 2. Procesar detalles con SQL Puro para forzar la actualización en MySQL
+        for item in items:
+            id_ins = item.get('idInsumo')
+            cant = Decimal(str(item.get('cantidad', 0)))
+            prec = Decimal(str(item.get('precio', 0)))
+
+            if not id_ins or cant <= 0: continue
+
+            # Registrar Detalle
             detalle = DetalleCompra(
                 idCompra=nueva_compra.idCompra,
-                idInsumo=item['idInsumo'],
-                cantidad=cantidad_decimal,
-                precio_unitario=Decimal(str(item['precio']))
+                idInsumo=id_ins,
+                cantidad=cant,
+                precio_unitario=prec
             )
             db.session.add(detalle)
 
-            # SUMAR AL STOCK DEL INSUMO
-            insumo_obj = Insumo.query.get(item['idInsumo'])
-            if insumo_obj:
-                # Ajusta 'stock' al nombre real de tu columna en Insumo
-                if hasattr(insumo_obj, 'stock'):
-                    insumo_obj.stock += cantidad_decimal
-                elif hasattr(insumo_obj, 'cantidad'):
-                    insumo_obj.cantidad += cantidad_decimal
+            # --- ACTUALIZACIÓN DIRECTA VÍA SQL (COMO EN TU INVENTARIO) ---
+            # Esto ignora el caché de SQLAlchemy y escribe directo en las columnas
+            sql_update = text("""
+                UPDATE insumos 
+                SET stock = stock + :cantidad, 
+                    costoUnidad = :precio 
+                WHERE idInsumo = :id
+            """)
+            db.session.execute(sql_update, {
+                'cantidad': cant,
+                'precio': prec,
+                'id': id_ins
+            })
 
         db.session.commit()
-        return jsonify({"status": "success"})
+        return jsonify({"status": "success", "mensaje": "¡Hecho! Stock y Precio actualizados."})
+
     except Exception as e:
         db.session.rollback()
-        print(f"Error en compra: {e}")
+        print(f"Error: {e}")
         return jsonify({"status": "error", "mensaje": str(e)}), 500

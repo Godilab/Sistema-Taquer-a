@@ -4,6 +4,7 @@ from models import db
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
+
 ventas_bp = Blueprint('ventas', __name__, template_folder='templates')
 
 # =========================================================
@@ -386,33 +387,53 @@ def aceptar_pedido_web(id_pedido):
 @ventas_bp.route('/check_ordenes_listas')
 def check_ordenes_listas():
     try:
-        count = db.session.execute(text("SELECT COUNT(*) FROM ventas WHERE estado != 'cancelado'")).scalar()
-        return jsonify({"listas": count})
+        # El notificador visual solo debe contar las órdenes de hoy
+        query = text("SELECT COUNT(*) FROM ventas WHERE estado = 'completada' AND DATE(fecha) = CURDATE()")
+        count = db.session.execute(query).scalar() or 0
+        return jsonify({'listas': count})
     except Exception as e:
-        return jsonify({"listas": 0}), 500
+        return jsonify({'listas': 0})
+
+from datetime import datetime
 
 @ventas_bp.route('/get_ordenes_listas')
 def get_ordenes_listas():
     try:
+        # Obtenemos la fecha del parámetro GET, si no, usamos la de hoy
+        fecha_filtro = request.args.get('fecha')
+        if not fecha_filtro:
+            fecha_filtro = datetime.now().strftime('%Y-%m-%d')
+
+        # Filtramos por estado 'completada' y por la fecha seleccionada
         query = text("""
-            SELECT v.idVenta, v.fecha, v.estado, p.nombre, p.categoria, dv.cantidad, dv.opcion_preparacion
-            FROM ventas v
-            JOIN detalleVenta dv ON v.idVenta = dv.idVenta
-            JOIN productos p ON dv.idProducto = p.idProducto
-            WHERE v.estado != 'cancelado' ORDER BY v.fecha DESC
+            SELECT v.idVenta, v.fecha 
+            FROM ventas v 
+            WHERE v.estado = 'completada' 
+              AND DATE(v.fecha) = :fecha
+            ORDER BY v.fecha DESC
         """)
-        result = db.session.execute(query).mappings().all()
-        ordenes = {}
-        for r in result:
-            if r['idVenta'] not in ordenes:
-                ordenes[r['idVenta']] = {'id': r['idVenta'], 'fecha': r['fecha'].strftime('%H:%M') if r['fecha'] else '', 'estado': r['estado'], 'productos': []}
+        
+        ordenes_db = db.session.execute(query, {'fecha': fecha_filtro}).mappings().all()
+        
+        resultado = []
+        for o in ordenes_db:
+            # Consultar productos de cada orden
+            query_p = text("""
+                SELECT p.nombre, dv.cantidad, dv.opcion_preparacion 
+                FROM detalleVenta dv
+                JOIN productos p ON dv.idProducto = p.idProducto
+                WHERE dv.idVenta = :id
+            """)
+            prods = db.session.execute(query_p, {'id': o['idVenta']}).mappings().all()
             
-            opcion_final = '' if es_producto_sin_preparacion(r['categoria'], r['nombre']) else (r['opcion_preparacion'] or '')
-            
-            ordenes[r['idVenta']]['productos'].append({'nombre': r['nombre'], 'cantidad': r['cantidad'], 'opcion': opcion_final})
-        return jsonify(list(ordenes.values()))
+            resultado.append({
+                'id': o['idVenta'],
+                'fecha': o['fecha'].strftime('%H:%M'), # Solo hora para el historial del día
+                'productos': [{'nombre': p['nombre'], 'cantidad': p['cantidad'], 'opcion': p['opcion_preparacion']} for p in prods]
+            })
+        return jsonify(resultado)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
 @ventas_bp.route('/cancelar_orden/<int:id_venta>', methods=['POST'])
 def cancelar_orden(id_venta):
@@ -447,3 +468,79 @@ def cancelar_orden(id_venta):
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "mensaje": str(e)}), 500
+    
+
+#-----Ticket
+    
+def generar_ticket_ascii(id_venta, db_session, metodo_pago='Efectivo', monto_recibido=0.00, cambio=0.00):
+    ANCHO = 40
+    def centrar(texto): return texto.center(ANCHO)
+    def izq_der(izq, der): return f"{izq}{der:>{ANCHO - len(izq)}}"
+
+    query_venta = text("""
+        SELECT v.idVenta, v.fecha, v.total, COALESCE(p_emp.nombre, 'Administrador') AS nombre_cajero
+        FROM ventas v
+        LEFT JOIN empleados e ON v.idEmpleado = e.idEmpleado
+        LEFT JOIN personas p_emp ON e.idPersona = p_emp.idPersona
+        WHERE v.idVenta = :id
+    """)
+    venta = db_session.execute(query_venta, {'id': id_venta}).mappings().first()
+    if not venta: return "ERROR: Venta no encontrada."
+
+    query_detalles = text("""
+        SELECT p.nombre, dv.cantidad, dv.precio, (dv.cantidad * dv.precio) AS subtotal, dv.opcion_preparacion
+        FROM detalleVenta dv
+        JOIN productos p ON dv.idProducto = p.idProducto
+        WHERE dv.idVenta = :id
+    """)
+    detalles = db_session.execute(query_detalles, {'id': id_venta}).mappings().all()
+
+    lineas = []
+    lineas.append("=" * ANCHO)
+    lineas.append(centrar("TAQUERÍA LOS INGES"))
+    lineas.append(centrar("Universidad Tecnológica de León"))
+    lineas.append("=" * ANCHO)
+    lineas.append(f"Folio : #{str(venta.idVenta).zfill(6)}")
+    lineas.append(f"Fecha : {venta.fecha.strftime('%d/%m/%Y %H:%M')}")
+    lineas.append(f"Cajero: {venta.nombre_cajero}")
+    lineas.append("-" * ANCHO)
+    lineas.append(f"{'CANT':<4} {'DESCRIPCION':<18} {'P.UNIT':>7} {'SUBT':>8}")
+    lineas.append("-" * ANCHO)
+
+    for d in detalles:
+        nombre = str(d['nombre'])[:18]
+        lineas.append(f"{str(d['cantidad']):<4} {nombre:<18} {f'${float(d['precio']):.2f}':>7} {f'${float(d['subtotal']):.2f}':>8}")
+        if d['opcion_preparacion']:
+            lineas.append(f"  *{str(d['opcion_preparacion'])[:36]}")
+
+    lineas.append("-" * ANCHO)
+    lineas.append(izq_der("TOTAL:", f"${float(venta.total):.2f}"))
+    lineas.append("=" * ANCHO)
+
+    metodo_upper = str(metodo_pago).upper()
+    lineas.append(centrar(f"PAGO CON {metodo_upper}"))
+    if 'EFECTIVO' in metodo_upper:
+        lineas.append(izq_der("Recibido:", f"${float(monto_recibido):.2f}"))
+        lineas.append(izq_der("Cambio:", f"${float(cambio):.2f}"))
+    
+    lineas.append("=" * ANCHO)
+    lineas.append(centrar("¡GRACIAS POR SU PREFERENCIA!"))
+    lineas.append("\n\n\n")
+    return "\n".join(lineas)
+
+# --- RUTA DEL TICKET ---
+@ventas_bp.route('/ticket/<int:id_venta>')
+def imprimir_ticket(id_venta):
+    try:
+        # Capturamos datos dinámicos de la URL
+        metodo = request.args.get('metodo', 'Efectivo')
+        efectivo = request.args.get('efectivo', 0.0)
+        cambio = request.args.get('cambio', 0.0)
+
+        # Generamos el contenido ASCII usando la función utilitaria
+        contenido_ticket = generar_ticket_ascii(id_venta, db.session, metodo, efectivo, cambio)
+
+        # Pasamos el string a la plantilla
+        return render_template('ventas/ticket.html', ticket_ascii=contenido_ticket)
+    except Exception as e:
+        return f"Error en la generación del ticket: {str(e)}", 500

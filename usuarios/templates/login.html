@@ -33,7 +33,7 @@
             </div>
             
             <div class="pt-4">
-                <button type="button" onclick="validarLogin()" class="w-full bg-slate-900 text-white font-black py-6 rounded-[2.5rem] uppercase text-xs tracking-[0.2em] hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
+                <button type="submit" class="w-full bg-slate-900 text-white font-black py-6 rounded-[2.5rem] uppercase text-xs tracking-[0.2em] hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
                     Entrar al Sistema <i data-feather="arrow-right" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -42,35 +42,23 @@
 
     <script>
         feather.replace();
-
-        function validarLogin() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-
-            if (!email || !pass) {
-                mostrarNotificacion("Ingresa tus credenciales completas", "error");
-                return;
-            }
-
-            // Si está bien, enviamos el form
-            document.getElementById('loginForm').submit();
-        }
-
         function mostrarNotificacion(mensaje, tipo = 'success') {
             const toast = document.createElement('div');
             const bgClass = tipo === 'error' ? 'bg-red-500' : 'bg-emerald-500';
-            
             toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 ${bgClass} text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase text-[10px] tracking-widest z-[100] transition-all animate-in slide-in-from-bottom-10 fade-in duration-300`;
             toast.innerHTML = `<i data-feather="alert-circle" class="w-5 h-5"></i><span>${mensaje}</span>`;
-            
             document.body.appendChild(toast);
             feather.replace(); 
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, 20px)';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}{% for category, message in messages %}
+                    mostrarNotificacion("{{ message }}", "{{ 'error' if category == 'danger' else 'success' }}");
+                {% endfor %}{% endif %}
+            {% endwith %}
+        });
     </script>
 </body>
 </html>

@@ -79,20 +79,22 @@ def lista():
 def guardar():
     try:
         data = request.get_json()
-        id_insumo = data.get('id')
+        id_insumo = data.get('idInsumo')
         
-        # Incluimos unidad_minima (unidad operativa) y factor (merma)
+        # Mapeo robusto: acepta ambos formatos (snake_case y camelCase)
         params = {
-            'nom': data['nombre'], 
-            'cat': data['categoria'], 
-            'stk': data['stock'],
-            'min': data['minimo'], 
-            'cos': data['costo'], 
-            'prov': data['proveedor'],
-            'uni': data['unidad'],
-            'uni_min': data['unidad_minima'],
-            'mer': data.get('factor', 1.0)
-        }
+    'nom': data.get('nombre'),
+    'cat': data.get('categoria'),
+    'stk': data.get('stock'),
+    'min': data.get('minimo'),
+    'cos': data.get('costo'),
+    'prov': data.get('proveedor'),
+    'uni': data.get('unidad'),
+    # Esta línea es la clave: busca 'unidad_minima' o 'unidadMinima'
+    'uni_min': data.get('unidad_minima') or data.get('unidadMinima') or '',
+    # Esta línea busca 'factor' o 'merma'
+    'mer': data.get('factor') or data.get('merma') or 1.0
+}
 
         if id_insumo:
             sql = text("""
@@ -114,8 +116,11 @@ def guardar():
         return jsonify({"status": "success"})
     except Exception as e:
         db.session.rollback()
-        print(f"Error al guardar insumo: {e}")
         return jsonify({"status": "error", "mensaje": str(e)}), 500
+    
+
+    
+
 
 @inventario_bp.route('/sumar/<int:id_insumo>', methods=['POST'])
 @requiere_rol(['Administrador'])
@@ -130,3 +135,16 @@ def sumar(id_insumo):
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "mensaje": str(e)}), 500
+    
+@inventario_bp.route('/eliminar/<int:id_insumo>', methods=['POST'])
+@requiere_rol(['Administrador'])
+def eliminar(id_insumo):
+    try:
+        # Se elimina el insumo por su ID
+        db.session.execute(text("DELETE FROM insumos WHERE idInsumo = :id"), {'id': id_insumo})
+        db.session.commit()
+        return jsonify({"status": "success", "mensaje": "Insumo eliminado correctamente"})
+    except Exception as e:
+        db.session.rollback()
+        # Si el insumo está ligado a una receta, MySQL lanzará un error de llave foránea
+        return jsonify({"status": "error", "mensaje": "No se puede eliminar: el insumo está en uso en una receta."}), 500

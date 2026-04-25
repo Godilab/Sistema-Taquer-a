@@ -38,44 +38,71 @@
 </style>
 
 <div class="h-screen bg-[#FDFCFB] flex overflow-hidden relative">
-    
-    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+
+    <div id="toast-container"
+        class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 
     <div class="flex-1 flex flex-col p-4 overflow-hidden">
         <div class="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
-            <button onclick="filtrar('Todos', this)" class="btn-pos-filter px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-white shadow-md shadow-slate-200">✨ Todos</button>
+            <button onclick="filtrar('Todos', this)"
+                class="btn-pos-filter px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-white shadow-md shadow-slate-200">✨
+                Todos</button>
             {% for cat in categorias %}
-            <button onclick="filtrar('{{ cat }}', this)" class="btn-pos-filter px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-white text-slate-400 border border-slate-200 hover:bg-slate-50">{{ cat }}</button>
+            <button onclick="filtrar('{{ cat }}', this)"
+                class="btn-pos-filter px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all bg-white text-slate-400 border border-slate-200 hover:bg-slate-50">{{
+                cat }}</button>
             {% endfor %}
         </div>
 
         <div class="flex-1 overflow-y-auto pr-2 no-scrollbar pb-4">
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div
+                class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {% set colores_pos = {
-                'TACOS': {'bg': 'bg-emerald-500', 'light': 'bg-emerald-50', 'text': 'text-emerald-600', 'icon': '🌮'},
-                'GRINGAS': {'bg': 'bg-orange-500', 'light': 'bg-orange-50', 'text': 'text-orange-600', 'icon': '🫓'},
-                'QUESADILLAS': {'bg': 'bg-amber-500', 'light': 'bg-amber-50', 'text': 'text-amber-600', 'icon': '🧀'},
-                'BEBIDAS': {'bg': 'bg-blue-600', 'light': 'bg-blue-50', 'text': 'text-blue-600', 'icon': '🥤'},
-                'POSTRES': {'bg': 'bg-pink-600', 'light': 'bg-pink-50', 'text': 'text-pink-600', 'icon': '🍰'},
-                'GENERAL': {'bg': 'bg-slate-900', 'light': 'bg-slate-50', 'text': 'text-slate-600', 'icon': '🍽️'}
+                'TACOS': {'bg': 'bg-emerald-500', 'light': 'bg-emerald-50',
+                'text': 'text-emerald-600', 'icon': '🌮'},
+                'GRINGAS': {'bg': 'bg-orange-500', 'light': 'bg-orange-50',
+                'text': 'text-orange-600', 'icon': '🫓'},
+                'QUESADILLAS': {'bg': 'bg-amber-500', 'light': 'bg-amber-50',
+                'text': 'text-amber-600', 'icon': '🧀'},
+                'BEBIDAS': {'bg': 'bg-blue-600', 'light': 'bg-blue-50', 'text':
+                'text-blue-600', 'icon': '🥤'},
+                'POSTRES': {'bg': 'bg-pink-600', 'light': 'bg-pink-50', 'text':
+                'text-pink-600', 'icon': '🍰'},
+                'GENERAL': {'bg': 'bg-slate-900', 'light': 'bg-slate-50',
+                'text': 'text-slate-600', 'icon': '🍽️'}
                 } %}
 
                 {% for prod in productos %}
                 {% set c_key = (prod.categoria or 'GENERAL') | upper %}
-                {% set c = colores_pos[c_key] if c_key in colores_pos else colores_pos['GENERAL'] %}
-                
-                <div class="producto-card-pos bg-white rounded-[1.5rem] p-4 border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full active:scale-95"
+                {% set c = colores_pos[c_key] if c_key in colores_pos else
+                colores_pos['GENERAL'] %}
+
+                <div
+                    class="producto-card-pos bg-white rounded-[1.5rem] p-4 border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full active:scale-95"
                     data-categoria="{{ prod.categoria }}"
                     onclick="abrirModalCantidad('{{ prod.id }}', '{{ prod.nombre }}', '{{ prod.precio }}', '{{ (prod.categoria or '')|lower }}', '{{ (prod.nombre or '')|lower }}')">
-                    <div class="w-full h-28 {{ c.light }} rounded-2xl mb-3 flex items-center justify-center text-4xl group-hover:scale-105 transition-transform overflow-hidden">
-                        {% if prod.imagen %}<img src="{{ prod.imagen }}" alt="{{ prod.nombre }}" class="w-full h-full object-cover">{% else %}<span>{{ c.icon }}</span>{% endif %}
+                    <div
+                        class="w-full h-28 {{ c.light }} rounded-2xl mb-3 flex items-center justify-center text-4xl group-hover:scale-105 transition-transform overflow-hidden">
+                        {% if prod.imagen %}<img src="{{ prod.imagen }}"
+                            alt="{{ prod.nombre }}"
+                            class="w-full h-full object-cover">{% else
+                        %}<span>{{ c.icon }}</span>{% endif %}
                     </div>
                     <div class="mt-auto">
-                        <h3 class="font-black text-slate-900 uppercase italic leading-tight text-xs">{{ prod.nombre }}</h3>
-                        <p class="text-[8px] {{ c.text }} font-black mt-1 uppercase tracking-widest">{{ prod.categoria }}</p>
+                        <h3
+                            class="font-black text-slate-900 uppercase italic leading-tight text-xs">{{
+                            prod.nombre }}</h3>
+                        <p
+                            class="text-[8px] {{ c.text }} font-black mt-1 uppercase tracking-widest">{{
+                            prod.categoria }}</p>
                         <div class="mt-3 flex items-center justify-between">
-                            <span class="font-black text-lg text-slate-900 italic">${{ "{:,.2f}".format(prod.precio) }}</span>
-                            <div class="w-8 h-8 rounded-xl {{ c.bg }} flex items-center justify-center text-white shadow-sm shadow-slate-100"><i data-feather="plus" class="w-4 h-4"></i></div>
+                            <span
+                                class="font-black text-lg text-slate-900 italic">${{
+                                "{:,.2f}".format(prod.precio) }}</span>
+                            <div
+                                class="w-8 h-8 rounded-xl {{ c.bg }} flex items-center justify-center text-white shadow-sm shadow-slate-100"><i
+                                    data-feather="plus"
+                                    class="w-4 h-4"></i></div>
                         </div>
                     </div>
                 </div>
@@ -84,179 +111,329 @@
         </div>
     </div>
 
-    <div class="w-[26rem] h-screen sticky top-0 p-4 flex flex-col gap-4 bg-[#FDFCFB] border-l border-slate-200 overflow-hidden">
-        <div class="bg-white rounded-[2rem] p-5 border border-slate-200 shadow-sm flex flex-col flex-1 min-h-0">
+    <div
+        class="w-[26rem] h-screen sticky top-0 p-4 flex flex-col gap-4 bg-[#FDFCFB] border-l border-slate-200 overflow-hidden">
+        <div
+            class="bg-white rounded-[2rem] p-5 border border-slate-200 shadow-sm flex flex-col flex-1 min-h-0">
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500"><i data-feather="shopping-bag" class="w-5 h-5"></i></div>
+                <div
+                    class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500"><i
+                        data-feather="shopping-bag" class="w-5 h-5"></i></div>
                 <div>
-                    <h2 class="text-lg font-black text-slate-900 italic uppercase leading-none">Orden Actual</h2>
-                    <p id="count-badge" class="text-slate-400 text-[9px] font-black uppercase mt-1">0 Productos</p>
+                    <h2
+                        class="text-lg font-black text-slate-900 italic uppercase leading-none">Orden
+                        Actual</h2>
+                    <p id="count-badge"
+                        class="text-slate-400 text-[9px] font-black uppercase mt-1">0
+                        Productos</p>
                 </div>
             </div>
 
-            <div id="carrito-items" class="flex-1 overflow-y-auto space-y-3 pr-1 no-scrollbar mb-4">
-                <div class="flex flex-col items-center justify-center h-full opacity-20 text-center">
-                    <span class="text-4xl mb-2">🛒</span><p class="text-[9px] font-black uppercase tracking-widest">Carrito vacío</p>
+            <div id="carrito-items"
+                class="flex-1 overflow-y-auto space-y-3 pr-1 no-scrollbar mb-4">
+                <div
+                    class="flex flex-col items-center justify-center h-full opacity-20 text-center">
+                    <span class="text-4xl mb-2">🛒</span><p
+                        class="text-[9px] font-black uppercase tracking-widest">Carrito
+                        vacío</p>
                 </div>
             </div>
 
             <div class="border-t border-slate-100 pt-4 space-y-2">
-                <div class="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <span>Subtotal</span><span id="cart-subtotal" class="text-slate-900 font-bold">$0.00</span>
+                <div
+                    class="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <span>Subtotal</span><span id="cart-subtotal"
+                        class="text-slate-900 font-bold">$0.00</span>
                 </div>
-                <div class="flex justify-between items-center text-3xl font-black text-slate-900 italic pt-1">
-                    <span>Total</span><span id="cart-total" class="text-emerald-500">$0.00</span>
+                <div
+                    class="flex justify-between items-center text-3xl font-black text-slate-900 italic pt-1">
+                    <span>Total</span><span id="cart-total"
+                        class="text-emerald-500">$0.00</span>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3 mt-4">
-                <button onclick="prepararCobro('Efectivo')" class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-sm">
-                    <i data-feather="dollar-sign" class="w-5 h-5"></i><span class="text-[9px] font-black uppercase">Efectivo</span>
+                <button onclick="prepararCobro('Efectivo')"
+                    class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-sm">
+                    <i data-feather="dollar-sign" class="w-5 h-5"></i><span
+                        class="text-[9px] font-black uppercase">Efectivo</span>
                 </button>
-                <button onclick="prepararCobro('Tarjeta')" class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all shadow-sm">
-                    <i data-feather="credit-card" class="w-5 h-5"></i><span class="text-[9px] font-black uppercase">Tarjeta</span>
+                <button onclick="prepararCobro('Tarjeta')"
+                    class="flex flex-col items-center gap-1 p-3 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all shadow-sm">
+                    <i data-feather="credit-card" class="w-5 h-5"></i><span
+                        class="text-[9px] font-black uppercase">Tarjeta</span>
                 </button>
             </div>
-            <button onclick="cancelarOrdenActual()" class="mt-3 w-full py-3 bg-red-50 text-red-500 rounded-2xl font-black uppercase text-[9px] tracking-widest border border-red-100 hover:bg-red-500 hover:text-white transition-all">Cancelar Orden</button>
+            <button onclick="cancelarOrdenActual()"
+                class="mt-3 w-full py-3 bg-red-50 text-red-500 rounded-2xl font-black uppercase text-[9px] tracking-widest border border-red-100 hover:bg-red-500 hover:text-white transition-all">Cancelar
+                Orden</button>
         </div>
 
         <div class="grid grid-cols-2 gap-3 shrink-0">
-            <div id="notif-pedidos-web" onclick="abrirModalPedidos()" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer hover:bg-slate-50 active:scale-95 relative">
-                <span id="web-badge" class="hidden absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[8px] font-black w-5 h-5 rounded-full border-2 border-white flex items-center justify-center animate-bounce">0</span>
+            <div id="notif-pedidos-web" onclick="abrirModalPedidos()"
+                class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer hover:bg-slate-50 active:scale-95 relative">
+                <span id="web-badge"
+                    class="hidden absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[8px] font-black w-5 h-5 rounded-full border-2 border-white flex items-center justify-center animate-bounce">0</span>
                 <i data-feather="globe" class="w-5 h-5 text-slate-400 mb-1"></i>
-                <p id="notif-text-title" class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Pedidos Web</p>
-                <span id="notif-text" class="text-[8px] font-bold text-slate-300 uppercase mt-0.5">Sin activos</span>
+                <p id="notif-text-title"
+                    class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Pedidos
+                    Web</p>
+                <span id="notif-text"
+                    class="text-[8px] font-bold text-slate-300 uppercase mt-0.5">Sin
+                    activos</span>
             </div>
 
-            <div id="notif-ordenes-listas" onclick="abrirModalListas()" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer hover:bg-slate-50 active:scale-95 relative">
-                <span id="listas-badge" class="hidden absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-black w-5 h-5 rounded-full border-2 border-white flex items-center justify-center animate-bounce">0</span>
+            <div id="notif-ordenes-listas" onclick="abrirModalListas()"
+                class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer hover:bg-slate-50 active:scale-95 relative">
+                <span id="listas-badge"
+                    class="hidden absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-black w-5 h-5 rounded-full border-2 border-white flex items-center justify-center animate-bounce">0</span>
                 <i data-feather="clock" class="w-5 h-5 text-slate-400 mb-1"></i>
-                <p id="listas-text-title" class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Historial</p>
-                <span id="listas-text" class="text-[8px] font-bold text-slate-300 uppercase mt-0.5">Sin historial</span>
+                <p id="listas-text-title"
+                    class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic leading-tight">Historial</p>
+                <span id="listas-text"
+                    class="text-[8px] font-bold text-slate-300 uppercase mt-0.5">Sin
+                    historial</span>
             </div>
         </div>
     </div>
 </div>
 
-<div id="modalPago" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl">
+<div id="modalPago"
+    class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4">
+    <div
+        class="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl">
         <div class="p-6 text-center border-b border-slate-100">
-            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Cobro Total</p>
-            <h2 id="m-total-confirm" class="text-4xl font-black text-slate-900 italic">$0.00</h2>
+            <p
+                class="text-[10px] font-black text-slate-400 uppercase mb-1">Cobro
+                Total</p>
+            <h2 id="m-total-confirm"
+                class="text-4xl font-black text-slate-900 italic">$0.00</h2>
         </div>
         <div class="p-6 space-y-6">
             <div id="m-seccion-efectivo">
                 <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Efectivo Recibido</label>
-                    <input type="number" id="m-recibido" oninput="calcularCambio()" placeholder="0.00" class="w-full p-4 bg-slate-50 border border-slate-200 outline-none rounded-2xl text-2xl font-black text-center text-slate-900">
+                    <label
+                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Efectivo
+                        Recibido</label>
+                    <input type="number" id="m-recibido"
+                        oninput="calcularCambio()" placeholder="0.00"
+                        class="w-full p-4 bg-slate-50 border border-slate-200 outline-none rounded-2xl text-2xl font-black text-center text-slate-900">
                 </div>
-                <div class="mt-4 p-4 bg-emerald-500 rounded-2xl text-white flex justify-between items-center shadow-md shadow-emerald-100">
-                    <span class="text-[10px] font-black uppercase">Cambio:</span><span id="m-cambio" class="text-2xl font-black">$0.00</span>
+                <div
+                    class="mt-4 p-4 bg-emerald-500 rounded-2xl text-white flex justify-between items-center shadow-md shadow-emerald-100">
+                    <span
+                        class="text-[10px] font-black uppercase">Cambio:</span><span
+                        id="m-cambio" class="text-2xl font-black">$0.00</span>
                 </div>
             </div>
-            <div id="m-seccion-tarjeta" class="hidden text-center py-4"><p class="font-bold text-sm text-slate-600">Confirma el pago en la terminal física.</p></div>
+            <div id="m-seccion-tarjeta" class="hidden text-center py-4"><p
+                    class="font-bold text-sm text-slate-600">Confirma el pago en
+                    la terminal física.</p></div>
             <div class="flex gap-3">
-                <button onclick="cerrarModalPago()" class="flex-1 py-4 bg-slate-100 hover:bg-slate-200 rounded-2xl font-black text-slate-500 uppercase text-[10px] transition-colors">Cancelar</button>
-                <button onclick="finalizarVenta()" id="btn-finalizar" class="flex-[2] py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] transition-colors">Finalizar</button>
+                <button onclick="cerrarModalPago()"
+                    class="flex-1 py-4 bg-slate-100 hover:bg-slate-200 rounded-2xl font-black text-slate-500 uppercase text-[10px] transition-colors">Cancelar</button>
+                <button onclick="finalizarVenta()" id="btn-finalizar"
+                    class="flex-[2] py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] transition-colors">Finalizar</button>
             </div>
         </div>
     </div>
 </div>
 
-<div id="modalPedidosWeb" class="fixed inset-0 bg-slate-900/60 z-[60] hidden flex items-center justify-center backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+<div id="modalPedidosWeb"
+    class="fixed inset-0 bg-slate-900/60 z-[60] hidden flex items-center justify-center backdrop-blur-sm p-4">
+    <div
+        class="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl">
+        <div
+            class="p-6 border-b border-slate-100 flex justify-between items-center">
             <div>
-                <h2 class="text-xl font-black text-slate-900 uppercase italic">Pedidos Web Activos</h2>
-                <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest mt-1">Órdenes recibidas y en preparación</p>
+                <h2
+                    class="text-xl font-black text-slate-900 uppercase italic">Pedidos
+                    Web Activos</h2>
+                <p
+                    class="text-[9px] font-black text-orange-500 uppercase tracking-widest mt-1">Órdenes
+                    recibidas y en preparación</p>
             </div>
-            <button onclick="cerrarModalPedidos()" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"><i data-feather="x"></i></button>
+            <button onclick="cerrarModalPedidos()"
+                class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"><i
+                    data-feather="x"></i></button>
         </div>
-        <div id="lista-pedidos-web" class="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar bg-slate-50"></div>
+        <div id="lista-pedidos-web"
+            class="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar bg-slate-50"></div>
     </div>
 </div>
 
 <div id="modalOrdenesListas" class="fixed inset-0 bg-slate-900/60 z-[65] hidden flex items-center justify-center backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-            <div>
-                <h2 class="text-xl font-black text-slate-900 uppercase italic">Historial de Pedidos</h2>
-                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-1">Órdenes operativas del sistema</p>
+    <div class="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl ios-modal-in">
+        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+            <div class="text-center md:text-left">
+                <h2 class="text-xl font-black text-slate-900 uppercase italic leading-none">Historial de Ventas</h2>
+                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-2">Consulta operativa por fecha</p>
             </div>
-            <button onclick="cerrarModalListas()" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"><i data-feather="x"></i></button>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto justify-center">
+                <input type="date" id="filtro-fecha-historial" 
+                       class="bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2 text-[11px] font-black uppercase outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer shadow-sm"
+                       onchange="abrirModalListas(this.value)">
+                
+                <button onclick="cerrarModalListas()" 
+                        class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
         </div>
-        <div id="lista-ordenes-listas" class="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar bg-slate-50"></div>
+
+        <div id="lista-ordenes-listas" class="p-6 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar bg-slate-50">
+            </div>
     </div>
 </div>
 
-<div id="modalCantidad" class="fixed inset-0 bg-slate-900/60 z-[70] hidden flex items-center justify-center backdrop-blur-sm p-4">
+<div id="modalCantidad"
+    class="fixed inset-0 bg-slate-900/60 z-[70] hidden flex items-center justify-center backdrop-blur-sm p-4">
     <div class="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl">
-        <div id="modalCantidadBox" class="p-6 max-h-[85vh] overflow-y-auto no-scrollbar">
+        <div id="modalCantidadBox"
+            class="p-6 max-h-[85vh] overflow-y-auto no-scrollbar">
             <div class="text-center mb-5">
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Agregar producto</p>
-                <h2 id="mc-nombre" class="text-xl font-black text-slate-900 italic uppercase mt-1">Producto</h2>
-                <p id="mc-precio" class="text-emerald-500 font-black text-base mt-1">$0.00</p>
+                <p
+                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Agregar
+                    producto</p>
+                <h2 id="mc-nombre"
+                    class="text-xl font-black text-slate-900 italic uppercase mt-1">Producto</h2>
+                <p id="mc-precio"
+                    class="text-emerald-500 font-black text-base mt-1">$0.00</p>
             </div>
 
             <div id="mc-opciones-container" class="space-y-2 mb-5">
-                <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Con todo" class="hidden peer" checked><div class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p class="text-[10px] font-black uppercase text-slate-800">Con todo</p><p class="text-[9px] text-slate-500">Lleva cilantro, cebolla y salsa.</p></div></label>
-                <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Todo aparte" class="hidden peer"><div class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p class="text-[10px] font-black uppercase text-slate-800">Todo aparte</p><p class="text-[9px] text-slate-500">Se manda aparte verdura y salsa.</p></div></label>
-                <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Con verdura" class="hidden peer"><div class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p class="text-[10px] font-black uppercase text-slate-800">Con verdura</p></div></label>
-                <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Sin verdura" class="hidden peer"><div class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p class="text-[10px] font-black uppercase text-slate-800">Sin verdura</p></div></label>
+                <label class="block cursor-pointer"><input type="radio"
+                        name="mc-opcion" value="Con todo" class="hidden peer"
+                        checked><div
+                        class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p
+                            class="text-[10px] font-black uppercase text-slate-800">Con
+                            todo</p><p class="text-[9px] text-slate-500">Lleva
+                            cilantro, cebolla y salsa.</p></div></label>
+                <label class="block cursor-pointer"><input type="radio"
+                        name="mc-opcion" value="Todo aparte"
+                        class="hidden peer"><div
+                        class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p
+                            class="text-[10px] font-black uppercase text-slate-800">Todo
+                            aparte</p><p class="text-[9px] text-slate-500">Se
+                            manda aparte verdura y salsa.</p></div></label>
+                <label class="block cursor-pointer"><input type="radio"
+                        name="mc-opcion" value="Con verdura"
+                        class="hidden peer"><div
+                        class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p
+                            class="text-[10px] font-black uppercase text-slate-800">Con
+                            verdura</p></div></label>
+                <label class="block cursor-pointer"><input type="radio"
+                        name="mc-opcion" value="Sin verdura"
+                        class="hidden peer"><div
+                        class="rounded-xl border border-slate-200 px-3 py-2 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition"><p
+                            class="text-[10px] font-black uppercase text-slate-800">Sin
+                            verdura</p></div></label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
-                    <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Solo cilantro" class="hidden peer"><div class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p class="text-[9px] font-black uppercase text-slate-800">Cilantro</p></div></label>
-                    <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Solo cebolla" class="hidden peer"><div class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p class="text-[9px] font-black uppercase text-slate-800">Cebolla</p></div></label>
-                    <label class="block cursor-pointer"><input type="radio" name="mc-opcion" value="Solo salsa" class="hidden peer"><div class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p class="text-[9px] font-black uppercase text-slate-800">Salsa</p></div></label>
+                    <label class="block cursor-pointer"><input type="radio"
+                            name="mc-opcion" value="Solo cilantro"
+                            class="hidden peer"><div
+                            class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p
+                                class="text-[9px] font-black uppercase text-slate-800">Cilantro</p></div></label>
+                    <label class="block cursor-pointer"><input type="radio"
+                            name="mc-opcion" value="Solo cebolla"
+                            class="hidden peer"><div
+                            class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p
+                                class="text-[9px] font-black uppercase text-slate-800">Cebolla</p></div></label>
+                    <label class="block cursor-pointer"><input type="radio"
+                            name="mc-opcion" value="Solo salsa"
+                            class="hidden peer"><div
+                            class="rounded-xl border border-slate-200 py-2 text-center peer-checked:border-orange-500 peer-checked:bg-orange-50"><p
+                                class="text-[9px] font-black uppercase text-slate-800">Salsa</p></div></label>
                 </div>
             </div>
 
             <div class="flex items-center justify-center gap-3 mb-6">
-                <button type="button" onclick="ajustarCantidadModal(-1)" class="w-10 h-10 rounded-xl bg-red-50 text-red-500 font-black text-xl hover:bg-red-100 transition">-</button>
-                <input id="mc-cantidad" type="number" min="1" value="1" onchange="validarCantidadModal()" class="w-16 text-center font-black text-3xl text-slate-900 bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                <button type="button" onclick="ajustarCantidadModal(1)" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 font-black text-xl hover:bg-emerald-100 transition">+</button>
+                <button type="button" onclick="ajustarCantidadModal(-1)"
+                    class="w-10 h-10 rounded-xl bg-red-50 text-red-500 font-black text-xl hover:bg-red-100 transition">-</button>
+                <input id="mc-cantidad" type="number" min="1" value="1"
+                    onchange="validarCantidadModal()"
+                    class="w-16 text-center font-black text-3xl text-slate-900 bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                <button type="button" onclick="ajustarCantidadModal(1)"
+                    class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 font-black text-xl hover:bg-emerald-100 transition">+</button>
             </div>
 
             <div class="flex gap-3">
-                <button type="button" onclick="cerrarModalCantidad()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition">Cancelar</button>
-                <button type="button" id="btn-agregar-producto" onclick="confirmarAgregarCantidad()" class="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] transition">Agregar</button>
+                <button type="button" onclick="cerrarModalCantidad()"
+                    class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition">Cancelar</button>
+                <button type="button" id="btn-agregar-producto"
+                    onclick="confirmarAgregarCantidad()"
+                    class="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] transition">Agregar</button>
             </div>
         </div>
     </div>
 </div>
 
-<div id="modalPassword" class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl p-6 transition-all transform scale-95 opacity-0" id="modalPasswordBox">
+<div id="modalPassword"
+    class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-sm p-4">
+    <div
+        class="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl p-6 transition-all transform scale-95 opacity-0"
+        id="modalPasswordBox">
         <div class="text-center mb-4">
-            <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3"><i data-feather="lock" class="w-6 h-6"></i></div>
-            <h2 class="text-xl font-black text-slate-900 uppercase italic">Autorización</h2>
-            <p class="text-[10px] font-bold text-slate-500 uppercase mt-1">Ingrese clave de Administrador para anular el ticket y reintegrar insumos.</p>
+            <div
+                class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3"><i
+                    data-feather="lock" class="w-6 h-6"></i></div>
+            <h2
+                class="text-xl font-black text-slate-900 uppercase italic">Autorización</h2>
+            <p
+                class="text-[10px] font-bold text-slate-500 uppercase mt-1">Ingrese
+                clave de Administrador para anular el ticket y reintegrar
+                insumos.</p>
         </div>
-        <input type="password" id="admin-password-input" class="w-full bg-slate-50 border border-slate-200 text-center text-lg font-black text-slate-900 rounded-xl p-3 outline-none focus:border-red-500 mb-5" placeholder="••••••">
+        <input type="password" id="admin-password-input"
+            class="w-full bg-slate-50 border border-slate-200 text-center text-lg font-black text-slate-900 rounded-xl p-3 outline-none focus:border-red-500 mb-5"
+            placeholder="••••••">
         <div class="flex gap-3">
-            <button onclick="cerrarModalPassword()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition-colors">Cancelar</button>
-            <button onclick="confirmarCancelacionConPassword()" class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase text-[10px] transition-colors shadow-sm">Aceptar</button>
+            <button onclick="cerrarModalPassword()"
+                class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition-colors">Cancelar</button>
+            <button onclick="confirmarCancelacionConPassword()"
+                class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase text-[10px] transition-colors shadow-sm">Aceptar</button>
         </div>
     </div>
 </div>
 
-<div id="modalConfirm" class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-sm p-4">
-    <div class="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl p-6 transition-all transform scale-95 opacity-0" id="modalConfirmBox">
+<div id="modalConfirm"
+    class="fixed inset-0 bg-slate-900/60 z-[80] hidden flex items-center justify-center backdrop-blur-sm p-4">
+    <div
+        class="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl p-6 transition-all transform scale-95 opacity-0"
+        id="modalConfirmBox">
         <div class="text-center mb-4">
-            <div class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-3"><i data-feather="alert-triangle" class="w-6 h-6"></i></div>
-            <h2 class="text-xl font-black text-slate-900 uppercase italic">¿Anular Ticket?</h2>
-            <p class="text-[10px] font-bold text-slate-500 uppercase mt-1">Los insumos de esta orden se devolverán automáticamente al inventario.</p>
+            <div
+                class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-3"><i
+                    data-feather="alert-triangle" class="w-6 h-6"></i></div>
+            <h2
+                class="text-xl font-black text-slate-900 uppercase italic">¿Anular
+                Ticket?</h2>
+            <p class="text-[10px] font-bold text-slate-500 uppercase mt-1">Los
+                insumos de esta orden se devolverán automáticamente al
+                inventario.</p>
         </div>
         <div class="flex gap-3">
-            <button onclick="cerrarModalConfirm()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition-colors">No, volver</button>
-            <button onclick="confirmarCancelacionDirecta()" class="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] transition-colors shadow-sm">Sí, anular</button>
+            <button onclick="cerrarModalConfirm()"
+                class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-slate-500 uppercase text-[10px] transition-colors">No,
+                volver</button>
+            <button onclick="confirmarCancelacionDirecta()"
+                class="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] transition-colors shadow-sm">Sí,
+                anular</button>
         </div>
     </div>
 </div>
 
-<div id="successOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[999] flex items-center justify-center">
+<div id="successOverlay"
+    class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[999] flex items-center justify-center">
     <div class="text-center">
-        <div class="success-circle mx-auto"><svg viewBox="0 0 52 52" class="checkmark"><circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" /><path class="checkmark-check" fill="none" d="M14 27l7 7 16-16" /></svg></div>
-        <h2 class="text-white text-2xl font-black mt-5 animate-fadeUp">¡Operación exitosa!</h2>
+        <div class="success-circle mx-auto"><svg viewBox="0 0 52 52"
+                class="checkmark"><circle class="checkmark-circle" cx="26"
+                    cy="26" r="25" fill="none" /><path class="checkmark-check"
+                    fill="none" d="M14 27l7 7 16-16" /></svg></div>
+        <h2
+            class="text-white text-2xl font-black mt-5 animate-fadeUp">¡Operación
+            exitosa!</h2>
     </div>
 </div>
 
@@ -498,11 +675,24 @@
     }
 
     function prepararCobro(metodo) {
-        if (carrito.length === 0) return showToast("El carrito está vacío.", "error");
-        m_pago = metodo; document.getElementById('m-total-confirm').innerText = `$${totalOrden.toFixed(2)}`;
-        document.getElementById('m-seccion-efectivo').classList.toggle('hidden', metodo !== 'Efectivo'); document.getElementById('m-seccion-tarjeta').classList.toggle('hidden', metodo === 'Efectivo');
-        document.getElementById('modalPago').classList.remove('hidden');
+    if (carrito.length === 0) return showToast("El carrito está vacío.", "error");
+    
+    m_pago = metodo; 
+    document.getElementById('m-total-confirm').innerText = `$${totalOrden.toFixed(2)}`;
+    
+    // Reseteo preventivo del input de efectivo
+    const inputRecibido = document.getElementById('m-recibido');
+    if (inputRecibido) inputRecibido.value = '';
+    document.getElementById('m-cambio').innerText = '$0.00';
+
+    document.getElementById('m-seccion-efectivo').classList.toggle('hidden', metodo !== 'Efectivo'); 
+    document.getElementById('m-seccion-tarjeta').classList.toggle('hidden', metodo === 'Efectivo');
+    document.getElementById('modalPago').classList.remove('hidden');
+    
+    if(metodo === 'Efectivo' && inputRecibido) {
+        setTimeout(() => inputRecibido.focus(), 200);
     }
+}
 
     function calcularCambio() {
         const recibido = parseFloat(document.getElementById('m-recibido').value) || 0;
@@ -511,24 +701,81 @@
     function cerrarModalPago() { document.getElementById('modalPago').classList.add('hidden'); }
 
     async function finalizarVenta() {
-        const btn = document.getElementById('btn-finalizar');
-        btn.disabled = true; btn.innerHTML = "Procesando...";
+    const btn = document.getElementById('btn-finalizar');
+    const inputRecibido = document.getElementById('m-recibido');
+    let montoRecibido = parseFloat(inputRecibido?.value) || 0;
+    
+    btn.disabled = true; 
+    btn.innerHTML = "Procesando...";
 
-        if (m_pago === 'Efectivo') {
-            if ((parseFloat(document.getElementById('m-recibido').value) || 0) < totalOrden) {
-                showToast("Dinero insuficiente.", 'error'); btn.disabled = false; btn.innerHTML = "Finalizar"; return;
-            }
+    // 1. Validación de pago
+    if (m_pago === 'Efectivo') {
+        if (montoRecibido < totalOrden) {
+            showToast("Dinero insuficiente para cubrir la cuenta.", 'error'); 
+            btn.disabled = false; 
+            btn.innerHTML = "Finalizar"; 
+            return;
         }
-
-        try {
-            const res = await fetch('/ventas/registrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idEmpleado: 1, metodoPago: m_pago, total: totalOrden, carrito: carrito.map(i => ({ idProducto: i.idProducto, cantidad: i.cantidad, precio: i.precio, opcion: i.opcion || '' })) }) });
-            const data = await res.json();
-            if (data.status === 'success') {
-                mostrarAnimacionExito(); carrito = []; actualizarUI(); cerrarModalPago();
-            } else { showToast(data.mensaje, 'error'); }
-        } catch (error) { showToast("Error de conexión con servidor.", "error"); } 
-        finally { btn.disabled = false; btn.innerHTML = "Finalizar"; }
+    } else {
+        // En pagos con tarjeta, el monto recibido es exactamente el total
+        montoRecibido = totalOrden;
     }
+
+    const cambio = m_pago === 'Efectivo' ? (montoRecibido - totalOrden) : 0;
+
+    try {
+        const payload = { 
+            metodoPago: m_pago, 
+            total: totalOrden, 
+            carrito: carrito.map(i => ({ 
+                idProducto: i.idProducto, 
+                cantidad: i.cantidad, 
+                precio: i.precio, 
+                opcion: i.opcion || '' 
+            })) 
+        };
+
+        const res = await fetch('/ventas/registrar', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            
+            // 2. Limpieza inmediata del estado (Frontend)
+            if (inputRecibido) inputRecibido.value = '';
+            const labelCambio = document.getElementById('m-cambio');
+            if (labelCambio) labelCambio.innerText = '$0.00';
+
+            cerrarModalPago();
+            carrito = [];
+            actualizarUI();
+            mostrarAnimacionExito();
+
+            // 3. Ejecución de impresión (Desacoplada)
+            if (data.idVenta) {
+                // Se utiliza setTimeout para permitir que el modal se cierre visualmente antes de abrir el pop-up
+                setTimeout(() => {
+                    const params = `metodo=${m_pago}&efectivo=${montoRecibido}&cambio=${cambio}`;
+                    const ticketUrl = `/ventas/ticket/${data.idVenta}?${params}`;
+                    window.open(ticketUrl, 'POS_Printer', 'width=400,height=600');
+                }, 400);
+            }
+
+        } else { 
+            showToast(data.mensaje, 'error'); 
+        }
+    } catch (error) { 
+        console.error("Error en transacción:", error);
+        showToast("Error de comunicación con el servidor.", "error"); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerHTML = "Finalizar"; 
+    }
+}
 
     async function abrirModalPedidos() {
         const cont = document.getElementById('lista-pedidos-web');
@@ -562,25 +809,72 @@
         } catch (e) { showToast("Error de red", 'error'); }
     }
 
-    async function abrirModalListas() {
-        const cont = document.getElementById('lista-ordenes-listas');
-        cont.innerHTML = '<p class="text-center font-black uppercase text-slate-400 animate-pulse py-8">Consultando...</p>'; document.getElementById('modalOrdenesListas').classList.remove('hidden');
-        try {
-            const res = await fetch('/ventas/get_ordenes_listas'); const ordenes = await res.json();
-            if (ordenes.error) { cont.innerHTML = `<p class="text-center text-red-500 font-black uppercase py-8">${ordenes.error}</p>`; return; }
-            if (ordenes.length === 0) { cont.innerHTML = '<p class="text-center text-slate-400 font-bold uppercase py-8">No hay historial</p>'; return; }
-            cont.innerHTML = ordenes.map(o => `
+    async function abrirModalListas(fechaSeleccionada = null) {
+    const cont = document.getElementById('lista-ordenes-listas');
+    const inputFecha = document.getElementById('filtro-fecha-historial');
+    
+    // Si no hay fecha (primera apertura), poner la de hoy
+    if (!fechaSeleccionada) {
+        const hoy = new Date().toISOString().split('T')[0];
+        fechaSeleccionada = hoy;
+        inputFecha.value = hoy;
+    }
+
+    cont.innerHTML = '<p class="text-center font-black uppercase text-slate-400 animate-pulse py-8">Consultando historial...</p>'; 
+    document.getElementById('modalOrdenesListas').classList.remove('hidden');
+    
+    try {
+        // Enviamos la fecha como parámetro a la ruta
+        const res = await fetch(`/ventas/get_ordenes_listas?fecha=${fechaSeleccionada}`); 
+        const ordenes = await res.json();
+        
+        if (ordenes.error) { 
+            cont.innerHTML = `<p class="text-center text-red-500 font-black uppercase py-8">${ordenes.error}</p>`; 
+            return; 
+        }
+        
+        if (ordenes.length === 0) { 
+            cont.innerHTML = `<div class="text-center py-8">
+                <p class="text-slate-400 font-bold uppercase">No hay ventas para esta fecha</p>
+                <p class="text-[10px] text-slate-300 font-black uppercase mt-1">${fechaSeleccionada}</p>
+            </div>`; 
+            return; 
+        }
+
+        cont.innerHTML = ordenes.map(o => `
             <div class="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col gap-4 shadow-sm mb-3">
                 <div class="flex justify-between items-start">
-                    <div><h3 class="font-black text-lg text-slate-900 uppercase italic">Ticket #${o.id}</h3><p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${o.fecha}</p></div>
+                    <div>
+                        <h3 class="font-black text-lg text-slate-900 uppercase italic">Ticket #${o.id}</h3>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">${o.fecha} hrs</p>
+                    </div>
                 </div>
-                <div class="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-100">${o.productos.map(i => `<div class="flex justify-between text-[10px] font-black uppercase italic border-b border-slate-100 pb-1.5 last:border-0 last:pb-0"><span>${i.nombre}${i.opcion ? `<span class="text-slate-400 ml-1 normal-case not-italic text-[8px]">${i.opcion}</span>` : ''}</span><span class="text-emerald-600">x${i.cantidad}</span></div>`).join('')}</div>
+                <div class="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-100">
+                    ${o.productos.map(i => `
+                        <div class="flex justify-between text-[10px] font-black uppercase italic border-b border-slate-100 pb-1.5 last:border-0 last:pb-0">
+                            <span>${i.nombre}${i.opcion ? `<span class="text-slate-400 ml-1 normal-case not-italic text-[8px]">${i.opcion}</span>` : ''}</span>
+                            <span class="text-emerald-600">x${i.cantidad}</span>
+                        </div>
+                    `).join('')}
+                </div>
                 <div class="flex gap-3">
                     <button onclick="solicitarCancelacion(${o.id})" class="flex-1 py-3 bg-red-50 text-red-500 rounded-xl font-black uppercase text-[9px] tracking-widest border border-red-100 hover:bg-red-500 hover:text-white transition-all">Anular Ticket</button>
+                    <button onclick="reimprimirTicket(${o.id})" class="px-4 py-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-900 hover:text-white transition-all">
+                        <i data-feather="printer" class="w-4 h-4"></i>
+                    </button>
                 </div>
-            </div>`).join(''); feather.replace();
-        } catch (e) { cont.innerHTML = '<p class="text-center text-red-500 font-black uppercase py-8">Error de red</p>'; }
+            </div>`).join(''); 
+        
+        feather.replace();
+    } catch (e) { 
+        cont.innerHTML = '<p class="text-center text-red-500 font-black uppercase py-8">Error de conexión</p>'; 
     }
+}
+// Función auxiliar para re-imprimir desde el historial
+function reimprimirTicket(idVenta) {
+    const ticketUrl = `/ventas/ticket/${idVenta}?metodo=REIMPRESION&efectivo=0&cambio=0`;
+    window.open(ticketUrl, 'TicketPrinter', 'width=400,height=600');
+}
 
     function cerrarModalListas() { document.getElementById('modalOrdenesListas').classList.add('hidden'); }
 

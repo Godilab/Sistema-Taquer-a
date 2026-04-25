@@ -89,7 +89,7 @@
         </div>
         <div class="flex gap-4 pt-4">
             <button onclick="cerrarModal()" class="flex-1 py-5 bg-slate-100 rounded-2xl font-black text-slate-400 uppercase text-xs">Cerrar</button>
-            <button onclick="procesarGuardado()" class="flex-1 py-5 bg-orange-500 text-white rounded-2xl font-black shadow-lg uppercase text-xs">Guardar Proveedor</button>
+            <button id="btnGuardar" onclick="procesarGuardado()" class="flex-1 py-5 bg-orange-500 text-white rounded-2xl font-black shadow-lg uppercase text-xs">Guardar Proveedor</button>
         </div>
     </div>
 </div>
@@ -103,7 +103,6 @@
     let currentId = null;
     let showInactive = false;
 
-    // --- SISTEMA DE NOTIFICACIONES PROFESIONAL ---
     function mostrarNotificacion(mensaje, tipo = 'success') {
         const toast = document.createElement('div');
         const bgClass = tipo === 'error' ? 'bg-red-500' : (tipo === 'warning' ? 'bg-orange-500' : 'bg-emerald-500');
@@ -131,7 +130,6 @@
         document.getElementById('modalProv').classList.remove('hidden');
     }
 
-    // Lógica para botones Editar
     document.querySelectorAll('.btn-editar').forEach(btn => {
         btn.addEventListener('click', function() {
             currentId = this.dataset.id;
@@ -144,64 +142,81 @@
     });
 
     async function procesarGuardado() {
-        const nameInput = document.getElementById('f_name').value;
+        const nameInput = document.getElementById('f_name').value.trim();
         if(!nameInput) {
             mostrarNotificacion("El nombre comercial es obligatorio", "warning");
             return;
         }
 
+        const btn = document.getElementById('btnGuardar');
+        btn.disabled = true;
+
         const payload = {
             id: currentId,
             name: nameInput,
-            phone: document.getElementById('f_phone').value,
-            address: document.getElementById('f_address').value,
+            phone: document.getElementById('f_phone').value.trim(),
+            address: document.getElementById('f_address').value.trim(),
             active: true
         };
         
         try {
             const res = await fetch('/proveedores/guardar', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
+            const data = await res.json();
             
-            if (res.ok) {
-                mostrarNotificacion("Proveedor guardado exitosamente", "success");
+            if (res.ok && data.status === "success") {
+                mostrarNotificacion(data.mensaje || "Proveedor guardado", "success");
                 setTimeout(() => window.location.reload(), 1000);
             } else {
-                mostrarNotificacion("Error al guardar el proveedor", "error");
+                mostrarNotificacion(data.mensaje || "Error al guardar", "error");
+                btn.disabled = false;
             }
         } catch (e) {
-            mostrarNotificacion("Error de conexión con el servidor", "error");
+            mostrarNotificacion("Error de conexión", "error");
+            btn.disabled = false;
         }
     }
 
     async function toggleStatus(id) {
         try {
             const res = await fetch(`/proveedores/toggle/${id}`, { method: 'POST' });
-            if (res.ok) {
-                mostrarNotificacion("Estado actualizado", "success");
+            const data = await res.json();
+            
+            if (res.ok && data.status === "success") {
+                mostrarNotificacion("Estado actualizado correctamente", "success");
                 setTimeout(() => window.location.reload(), 1000);
             } else {
-                mostrarNotificacion("Error al actualizar el estado", "error");
+                mostrarNotificacion(data.mensaje || "Error al actualizar", "error");
             }
         } catch (e) {
-            mostrarNotificacion("Error de conexión con el servidor", "error");
+            mostrarNotificacion("Error de conexión", "error");
         }
     }
 
     function toggleInactivos() {
         showInactive = !showInactive;
-        document.getElementById('btnToggleInactivos').innerText = showInactive ? 'Ver solo activos' : 'Ver inactivos';
+        const btn = document.getElementById('btnToggleInactivos');
+        btn.innerText = showInactive ? 'Ver solo activos' : 'Ver inactivos';
         document.querySelectorAll('.prov-row').forEach(row => {
-            if(row.dataset.active === "false") row.style.display = showInactive ? "table-row" : "none";
+            if(row.dataset.active === "false") {
+                row.style.display = showInactive ? "table-row" : "none";
+            }
         });
     }
 
     document.getElementById('busquedaProv').addEventListener('input', function(e) {
         const query = e.target.value.toLowerCase();
         document.querySelectorAll('.prov-row').forEach(row => {
-            const match = row.dataset.nombre.includes(query);
-            row.style.display = match ? "table-row" : "none";
+            const nombre = row.dataset.nombre;
+            const match = nombre.includes(query);
+            if (row.dataset.active === "false" && !showInactive) {
+                row.style.display = "none";
+            } else {
+                row.style.display = match ? "table-row" : "none";
+            }
         });
     });
 </script>

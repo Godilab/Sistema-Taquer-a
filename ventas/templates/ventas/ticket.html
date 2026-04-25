@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Impresión de Ticket</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #fff; }
+        /* La etiqueta PRE es vital para mantener el diseño ASCII */
+        pre {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px; /* Ajusta según tu impresora */
+            line-height: 1.2;
+            width: 80mm; /* Ancho estándar de papel térmico */
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        @media print {
+            @page { margin: 0; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <pre>{{ ticket_ascii }}</pre>
+
+    <script>
+        window.onload = function() {
+            window.print();
+            // Cerrar la ventana tras 1 segundo de abrir el diálogo de impresión
+            setTimeout(() => { window.close(); }, 1000);
+        };
+    </script>
+</body>
+</html>
